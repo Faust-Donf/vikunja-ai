@@ -121,6 +121,29 @@ def test_task_input_rejects_invalid_status_priority_and_plan_date(tmp_path, monk
     assert bad_plan_date.status_code == 422
 
 
+def test_delete_task_returns_404_when_task_is_missing(tmp_path, monkeypatch):
+    _, client = load_app(tmp_path, monkeypatch)
+    created = client.post(
+        "/api/tasks",
+        json={
+            "title": "删除语义测试",
+            "status": "待办",
+            "priority": "中",
+            "plan_date": "2026-06-07",
+            "project": "测试",
+            "tags": "",
+            "notes": "",
+        },
+    ).json()
+
+    deleted = client.delete(f"/api/tasks/{created['id']}")
+    missing = client.delete(f"/api/tasks/{created['id']}")
+
+    assert deleted.status_code == 200
+    assert deleted.json() == {"deleted": 1}
+    assert missing.status_code == 404
+
+
 def test_generate_filters_existing_tasks_and_preserves_input_requests(tmp_path, monkeypatch):
     app_module, client = load_app(tmp_path, monkeypatch)
 

@@ -579,6 +579,8 @@ async def update_task(task_id: int, task: TaskInput) -> Task:
 async def delete_task(task_id: int) -> dict[str, int]:
     with db() as conn:
         cur = conn.execute("delete from tasks where id = ?", (task_id,))
+    if cur.rowcount == 0:
+        raise HTTPException(404, "任务不存在")
     return {"deleted": cur.rowcount}
 
 
