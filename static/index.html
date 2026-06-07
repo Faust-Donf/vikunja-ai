@@ -1,0 +1,1105 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>个人计划表</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4f6f8;
+        --panel: #ffffff;
+        --ink: #17202a;
+        --muted: #687481;
+        --line: #dde3ea;
+        --soft: #f8fafc;
+        --accent: #146b63;
+        --accent-soft: #e3f3ef;
+        --danger: #a43f30;
+        --urgent: #d44b3e;
+        --important: #2f6fa5;
+        --shadow: 0 10px 32px rgba(28, 39, 54, 0.08);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 14px/1.45 "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+      button {
+        border: 1px solid transparent;
+        border-radius: 6px;
+        cursor: pointer;
+        height: 34px;
+        padding: 0 12px;
+        font-weight: 650;
+      }
+      .primary {
+        background: var(--accent);
+        color: #fff;
+      }
+      .secondary {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      .ghost {
+        background: #fff;
+        border-color: var(--line);
+        color: var(--ink);
+      }
+      .danger {
+        background: #fff2ef;
+        color: var(--danger);
+      }
+      .complete {
+        background: #eef7f1;
+        color: #227347;
+      }
+      .shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+      header {
+        height: 62px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 22px;
+        background: rgba(255, 255, 255, 0.86);
+        border-bottom: 1px solid var(--line);
+        backdrop-filter: blur(12px);
+        position: sticky;
+        top: 0;
+        z-index: 5;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+        letter-spacing: 0;
+      }
+      .sub {
+        color: var(--muted);
+        margin-left: 10px;
+        font-size: 13px;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(680px, 1fr) 360px;
+        gap: 16px;
+        padding: 16px;
+      }
+      .board,
+      .chat {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        min-width: 0;
+      }
+      .toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px;
+        border-bottom: 1px solid var(--line);
+      }
+      .board-summary {
+        font-weight: 750;
+        color: #3b4652;
+        white-space: nowrap;
+      }
+      .toolbar-main {
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) auto auto auto;
+        gap: 8px;
+        width: 100%;
+        align-items: center;
+      }
+      .filters {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .filters input,
+      .filters select {
+        height: 34px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 0 10px;
+        background: #fff;
+      }
+      .filters input {
+        min-width: 220px;
+      }
+      .table-wrap {
+        overflow: auto;
+        max-height: calc(100vh - 148px);
+      }
+      table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        min-width: 920px;
+      }
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--soft);
+        color: #4c5967;
+        font-size: 12px;
+        font-weight: 750;
+      }
+      td input,
+      td select,
+      td textarea {
+        width: 100%;
+        border: 1px solid transparent;
+        border-radius: 5px;
+        background: transparent;
+        color: var(--ink);
+        padding: 6px;
+      }
+      td input:focus,
+      td select:focus,
+      td textarea:focus {
+        outline: none;
+        background: #fff;
+        border-color: #9bb9b3;
+      }
+      td textarea {
+        resize: vertical;
+        min-height: 34px;
+      }
+      tr.priority-high td:first-child {
+        box-shadow: inset 4px 0 0 #d44b3e;
+      }
+      tr.priority-medium td:first-child {
+        box-shadow: inset 4px 0 0 #c28b16;
+      }
+      tr.priority-low td:first-child {
+        box-shadow: inset 4px 0 0 #5f8a70;
+      }
+      tr.done-row {
+        opacity: 0.62;
+      }
+      tr.done-row .title-cell input {
+        text-decoration: line-through;
+      }
+      .priority-pill,
+      .quadrant-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 24px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 750;
+        margin-top: 5px;
+        padding: 0 9px;
+        white-space: nowrap;
+      }
+      .p-high {
+        background: #ffe8e2;
+        color: #a73428;
+      }
+      .p-medium {
+        background: #fff3d6;
+        color: #875c08;
+      }
+      .p-low {
+        background: #eaf4ed;
+        color: #3c6f4b;
+      }
+      .quadrant-pill {
+        background: #eef2f7;
+        color: #425064;
+      }
+      .q-do {
+        background: #ffe5df;
+        color: #9d3329;
+      }
+      .q-plan {
+        background: #e6f1ff;
+        color: #285f99;
+      }
+      .q-delegate {
+        background: #fff2d2;
+        color: #7b5713;
+      }
+      .q-later {
+        background: #edf1ef;
+        color: #52645b;
+      }
+      .row-actions {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .quadrant-bar {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+        background: #fbfcfd;
+      }
+      .quadrant-card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+        background: #fff;
+        cursor: pointer;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 10px;
+        align-items: center;
+        text-align: left;
+      }
+      .quadrant-card.q-do {
+        background: #fff7f5;
+        border-color: #f1b9ae;
+      }
+      .quadrant-card.q-plan {
+        background: #f5f9ff;
+        border-color: #b8d4f2;
+      }
+      .quadrant-card.q-delegate {
+        background: #fffaf0;
+        border-color: #efd28d;
+      }
+      .quadrant-card.q-later {
+        background: #f7f9f8;
+        border-color: #d2ddd6;
+      }
+      .quadrant-card.active {
+        border-color: #8caea8;
+        box-shadow: inset 0 0 0 1px #8caea8;
+      }
+      .quadrant-dot {
+        width: 12px;
+        height: 38px;
+        border-radius: 999px;
+        background: #93a0ad;
+      }
+      .quadrant-card.q-do .quadrant-dot {
+        background: var(--urgent);
+      }
+      .quadrant-card.q-plan .quadrant-dot {
+        background: var(--important);
+      }
+      .quadrant-card.q-delegate .quadrant-dot {
+        background: #c28b16;
+      }
+      .quadrant-card.q-later .quadrant-dot {
+        background: #7b8b82;
+      }
+      .quadrant-name {
+        font-weight: 800;
+      }
+      .quadrant-count {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 2px;
+      }
+      .quadrant-rule {
+        color: #7a8490;
+        font-size: 11px;
+        margin-top: 4px;
+      }
+      .id-cell {
+        width: 48px;
+        color: var(--muted);
+      }
+      .title-cell {
+        min-width: 220px;
+      }
+      .notes-cell {
+        min-width: 260px;
+      }
+      .empty {
+        padding: 42px;
+        text-align: center;
+        color: var(--muted);
+      }
+      .chat {
+        display: grid;
+        grid-template-rows: auto auto 1fr auto;
+        max-height: calc(100vh - 94px);
+      }
+      .chat-head {
+        padding: 14px;
+        border-bottom: 1px solid var(--line);
+      }
+      .chat-title {
+        font-size: 16px;
+        font-weight: 800;
+      }
+      .quick {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 12px;
+        border-bottom: 1px solid var(--line);
+      }
+      .messages {
+        overflow: auto;
+        padding: 14px;
+        background: #fbfcfd;
+      }
+      .msg {
+        margin-bottom: 12px;
+        padding: 10px 11px;
+        border-radius: 8px;
+        white-space: pre-wrap;
+      }
+      .user {
+        background: var(--accent);
+        color: #fff;
+        margin-left: 28px;
+      }
+      .assistant {
+        background: #fff;
+        border: 1px solid var(--line);
+        margin-right: 18px;
+      }
+      .markdown {
+        white-space: normal;
+      }
+      .markdown h1,
+      .markdown h2,
+      .markdown h3 {
+        margin: 8px 0 6px;
+        line-height: 1.3;
+      }
+      .markdown h1 {
+        font-size: 18px;
+      }
+      .markdown h2 {
+        font-size: 16px;
+      }
+      .markdown h3 {
+        font-size: 15px;
+      }
+      .markdown p {
+        margin: 6px 0;
+      }
+      .markdown ol,
+      .markdown ul {
+        margin: 6px 0 6px 20px;
+        padding: 0;
+      }
+      .markdown li {
+        margin: 4px 0;
+      }
+      .composer {
+        border-top: 1px solid var(--line);
+        padding: 12px;
+      }
+      .composer textarea {
+        width: 100%;
+        min-height: 76px;
+        resize: vertical;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 9px;
+      }
+      .composer-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .status {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .error {
+        color: var(--danger);
+      }
+      dialog {
+        width: min(760px, calc(100vw - 32px));
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 0;
+        box-shadow: var(--shadow);
+      }
+      dialog::backdrop {
+        background: rgba(22, 28, 34, 0.22);
+      }
+      .dialog-head,
+      .dialog-foot {
+        padding: 14px;
+        border-bottom: 1px solid var(--line);
+      }
+      .dialog-foot {
+        border-top: 1px solid var(--line);
+        border-bottom: 0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+      .dialog-body {
+        padding: 14px;
+      }
+      .dialog-body textarea {
+        width: 100%;
+        min-height: 110px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 10px;
+      }
+      .generated {
+        margin-top: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .generated-row {
+        padding: 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      .generated-row:last-child {
+        border-bottom: 0;
+      }
+      .generated-grid {
+        display: grid;
+        grid-template-columns: 1fr 150px 150px 96px;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .generated-grid input,
+      .generated-grid select {
+        height: 32px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 0 8px;
+      }
+      .skipped {
+        margin-top: 12px;
+        padding: 10px;
+        border: 1px solid #f0d7a3;
+        border-radius: 8px;
+        background: #fff8e8;
+        color: #71500d;
+      }
+      .needs-input {
+        color: #a43f30;
+        font-size: 12px;
+        margin-top: 6px;
+      }
+      @media (max-width: 1050px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+        .chat {
+          max-height: none;
+        }
+        .quadrant-bar {
+          grid-template-columns: 1fr 1fr;
+        }
+        .toolbar-main,
+        .generated-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <div>
+          <h1>个人计划表<span class="sub">表格管理 + ChatAI</span></h1>
+        </div>
+        <div class="filters">
+          <button class="secondary" id="aiGenerateBtn">AI 生成任务</button>
+          <button class="primary" id="addBtn">新增一行</button>
+        </div>
+      </header>
+
+      <div class="layout">
+        <section class="board">
+          <div class="toolbar">
+            <div class="filters toolbar-main">
+              <input id="search" placeholder="搜索任务、项目、标签" />
+              <select id="statusFilter">
+                <option value="">全部状态</option>
+                <option>待办</option>
+                <option>进行中</option>
+                <option>阻塞</option>
+                <option>完成</option>
+              </select>
+              <select id="priorityFilter">
+                <option value="">全部优先级</option>
+                <option>高</option>
+                <option>中</option>
+                <option>低</option>
+              </select>
+              <select id="archiveFilter">
+                <option value="active">未归档</option>
+                <option value="done">已归档</option>
+                <option value="all">全部任务</option>
+              </select>
+            </div>
+            <span id="tableStatus" class="board-summary"></span>
+          </div>
+          <div class="quadrant-bar" id="quadrantBar"></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th class="id-cell">ID</th>
+                  <th class="title-cell">任务</th>
+                  <th>状态</th>
+                  <th>优先级</th>
+                  <th>计划日期</th>
+                  <th>四象限</th>
+                  <th>项目</th>
+                  <th>标签</th>
+                  <th class="notes-cell">备注 / 完成标准</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="taskRows"></tbody>
+            </table>
+            <div id="empty" class="empty" hidden>还没有任务，先新增一行或让 AI 生成。</div>
+          </div>
+        </section>
+
+        <aside class="chat">
+          <div class="chat-head">
+            <div class="chat-title">AI助手</div>
+            <div class="status">会读取当前任务表，帮你做计划、复盘和优先级判断。</div>
+          </div>
+          <div class="quick">
+            <button class="ghost" id="weeklyReportBtn">生成周报</button>
+            <button class="ghost" data-prompt="帮我安排今天最该做的 3 件事">今日重点</button>
+            <button class="ghost" data-prompt="根据当前任务表，帮我做一次周复盘">周复盘</button>
+            <button class="ghost" data-prompt="哪些任务应该延期、拆小或删除？">清理建议</button>
+            <button class="ghost" data-prompt="帮我把高优先级任务拆成下一步行动">拆下一步</button>
+          </div>
+          <div class="messages" id="messages">
+            <div class="msg assistant">你可以直接问：这周怎么排、今天先做什么、某个目标怎么拆。</div>
+          </div>
+          <div class="composer">
+            <textarea id="chatInput" placeholder="问 AI助手，例如：帮我把本周计划排得更现实一点"></textarea>
+            <div class="composer-actions">
+              <span id="chatStatus" class="status"></span>
+              <button class="primary" id="sendBtn">发送</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <dialog id="generateDialog">
+      <div class="dialog-head"><strong>AI 生成任务</strong></div>
+      <div class="dialog-body">
+        <textarea id="generatePrompt" placeholder="例如：我想这个月完成个人任务系统搭建，并形成每天计划、晚上复盘的习惯。"></textarea>
+        <div class="filters" style="margin-top: 10px">
+          <select id="generateHorizon">
+            <option>今天</option>
+            <option selected>本周</option>
+            <option>本月</option>
+            <option>未来 30 天</option>
+          </select>
+          <button class="secondary" id="runGenerateBtn">生成预览</button>
+          <span id="generateStatus" class="status"></span>
+        </div>
+        <div id="generatedResult"></div>
+      </div>
+      <div class="dialog-foot">
+        <button class="ghost" id="closeGenerateBtn">关闭</button>
+        <button class="primary" id="appendGeneratedBtn" disabled>追加到表格</button>
+      </div>
+    </dialog>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const fields = ["title", "status", "priority", "plan_date", "project", "tags", "notes"];
+      const quadrantMeta = {
+        do: { name: "重要且紧急", hint: "马上处理", className: "q-do" },
+        plan: { name: "重要不紧急", hint: "安排时间", className: "q-plan" },
+        delegate: { name: "紧急不重要", hint: "压缩处理", className: "q-delegate" },
+        later: { name: "不重要不紧急", hint: "稍后再看", className: "q-later" },
+      };
+      let tasks = [];
+      let chatHistory = [];
+      let generatedTasks = [];
+      let activeQuadrant = "";
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function renderMarkdown(markdown) {
+        const lines = String(markdown || "").split("\n");
+        const html = [];
+        let listType = "";
+        const closeList = () => {
+          if (listType) {
+            html.push(`</${listType}>`);
+            listType = "";
+          }
+        };
+        const inline = (text) =>
+          escapeHtml(text)
+            .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+            .replace(/`(.+?)`/g, "<code>$1</code>");
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) {
+            closeList();
+            continue;
+          }
+          if (trimmed.startsWith("### ")) {
+            closeList();
+            html.push(`<h3>${inline(trimmed.slice(4))}</h3>`);
+          } else if (trimmed.startsWith("## ")) {
+            closeList();
+            html.push(`<h2>${inline(trimmed.slice(3))}</h2>`);
+          } else if (trimmed.startsWith("# ")) {
+            closeList();
+            html.push(`<h1>${inline(trimmed.slice(2))}</h1>`);
+          } else if (/^\d+\.\s+/.test(trimmed)) {
+            if (listType !== "ol") {
+              closeList();
+              listType = "ol";
+              html.push("<ol>");
+            }
+            html.push(`<li>${inline(trimmed.replace(/^\d+\.\s+/, ""))}</li>`);
+          } else if (/^[-*]\s+/.test(trimmed)) {
+            if (listType !== "ul") {
+              closeList();
+              listType = "ul";
+              html.push("<ul>");
+            }
+            html.push(`<li>${inline(trimmed.replace(/^[-*]\s+/, ""))}</li>`);
+          } else {
+            closeList();
+            html.push(`<p>${inline(trimmed)}</p>`);
+          }
+        }
+        closeList();
+        return html.join("");
+      }
+
+      async function jsonFetch(url, options = {}) {
+        const resp = await fetch(url, {
+          headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+          ...options,
+        });
+        const text = await resp.text();
+        let data = {};
+        if (text) {
+          try {
+            data = JSON.parse(text);
+          } catch {
+            data = { detail: text };
+          }
+        }
+        if (!resp.ok) throw new Error(data.detail || "请求失败");
+        return data;
+      }
+
+      function setTableStatus(text, error = false) {
+        $("tableStatus").textContent = text;
+        $("tableStatus").className = error ? "status error" : "status";
+      }
+
+      function todayString() {
+        return new Date().toISOString().slice(0, 10);
+      }
+
+      function isUrgent(task) {
+        return task.plan_date && task.plan_date <= todayString();
+      }
+
+      function isImportant(task) {
+        return task.priority === "高";
+      }
+
+      function quadrantKey(task) {
+        const important = isImportant(task);
+        const urgent = isUrgent(task);
+        if (important && urgent) return "do";
+        if (important) return "plan";
+        if (urgent) return "delegate";
+        return "later";
+      }
+
+      function priorityClass(priority) {
+        if (priority === "高") return "priority-high";
+        if (priority === "低") return "priority-low";
+        return "priority-medium";
+      }
+
+      function priorityPillClass(priority) {
+        if (priority === "高") return "p-high";
+        if (priority === "低") return "p-low";
+        return "p-medium";
+      }
+
+      function filteredTasks() {
+        const q = $("search").value.trim().toLowerCase();
+        const status = $("statusFilter").value;
+        const priority = $("priorityFilter").value;
+        const archive = $("archiveFilter").value;
+        return tasks.filter((task) => {
+          const hay = `${task.title} ${task.project} ${task.tags} ${task.notes}`.toLowerCase();
+          const archiveMatch =
+            archive === "all" || (archive === "done" ? task.status === "完成" : task.status !== "完成");
+          return (
+            archiveMatch &&
+            (!q || hay.includes(q)) &&
+            (!status || task.status === status) &&
+            (!priority || task.priority === priority) &&
+            (!activeQuadrant || quadrantKey(task) === activeQuadrant)
+          );
+        });
+      }
+
+      function renderQuadrants() {
+        const activeTasks = tasks.filter((task) => task.status !== "完成");
+        $("quadrantBar").innerHTML = Object.entries(quadrantMeta)
+          .map(([key, meta]) => {
+            const count = activeTasks.filter((task) => quadrantKey(task) === key).length;
+            return `
+              <button class="quadrant-card ${meta.className} ${activeQuadrant === key ? "active" : ""}" data-quadrant="${key}">
+                <span class="quadrant-dot"></span>
+                <span>
+                  <div class="quadrant-name">${meta.name}</div>
+                  <div class="quadrant-count">${meta.hint} · ${count} 条</div>
+                  <div class="quadrant-rule">${key === "do" ? "高优先级 + 今天/逾期" : key === "plan" ? "高优先级 + 非紧急" : key === "delegate" ? "非高优先级 + 今天/逾期" : "非高优先级 + 非紧急"}</div>
+                </span>
+              </button>
+            `;
+          })
+          .join("");
+      }
+
+      function renderTasks() {
+        const visible = filteredTasks();
+        renderQuadrants();
+        $("empty").hidden = visible.length > 0;
+        $("taskRows").innerHTML = visible
+          .map(
+            (task) => {
+              const q = quadrantMeta[quadrantKey(task)];
+              return `
+              <tr data-id="${task.id}" class="${priorityClass(task.priority)} ${task.status === "完成" ? "done-row" : ""}">
+                <td class="id-cell">#${task.id}</td>
+                <td class="title-cell"><input data-field="title" value="${escapeHtml(task.title)}" /></td>
+                <td>
+                  <select data-field="status">
+                    ${["待办", "进行中", "阻塞", "完成"].map((v) => `<option ${task.status === v ? "selected" : ""}>${v}</option>`).join("")}
+                  </select>
+                </td>
+                <td>
+                  <select data-field="priority">
+                    ${["高", "中", "低"].map((v) => `<option ${task.priority === v ? "selected" : ""}>${v}</option>`).join("")}
+                  </select>
+                  <div class="priority-pill ${priorityPillClass(task.priority)}">${escapeHtml(task.priority)}优先级</div>
+                </td>
+                <td><input type="date" data-field="plan_date" value="${escapeHtml(task.plan_date || "")}" /></td>
+                <td><span class="quadrant-pill ${q.className}">${q.name}</span></td>
+                <td><input data-field="project" value="${escapeHtml(task.project)}" /></td>
+                <td><input data-field="tags" value="${escapeHtml(task.tags)}" /></td>
+                <td class="notes-cell"><textarea data-field="notes">${escapeHtml(task.notes)}</textarea></td>
+                <td>
+                  <div class="row-actions">
+                    ${
+                      task.status === "完成"
+                        ? `<button class="ghost" data-reopen="${task.id}">恢复</button>`
+                        : `<button class="complete" data-complete="${task.id}">完成归档</button>`
+                    }
+                    <button class="danger" data-delete="${task.id}">删除</button>
+                  </div>
+                </td>
+              </tr>
+            `;
+            },
+          )
+          .join("");
+        setTableStatus(`${visible.length} / ${tasks.length} 条任务`);
+      }
+
+      async function loadTasks() {
+        tasks = await jsonFetch("/api/tasks");
+        renderTasks();
+      }
+
+      function taskPayload(task) {
+        const payload = {};
+        for (const field of fields) payload[field] = task[field] || "";
+        return payload;
+      }
+
+      async function saveTask(task) {
+        const saved = await jsonFetch(`/api/tasks/${task.id}`, {
+          method: "PUT",
+          body: JSON.stringify(taskPayload(task)),
+        });
+        const index = tasks.findIndex((item) => item.id === saved.id);
+        if (index >= 0) tasks[index] = saved;
+      }
+
+      function debounce(fn, wait = 500) {
+        let timer;
+        return (...args) => {
+          clearTimeout(timer);
+          timer = setTimeout(() => fn(...args), wait);
+        };
+      }
+
+      const debouncedSave = debounce(async (task) => {
+        try {
+          await saveTask(task);
+          setTableStatus("已保存");
+        } catch (err) {
+          setTableStatus(err.message, true);
+        }
+      });
+
+      $("taskRows").addEventListener("input", (event) => {
+        const target = event.target;
+        const field = target.dataset.field;
+        if (!field) return;
+        const id = Number(target.closest("tr").dataset.id);
+        const task = tasks.find((item) => item.id === id);
+        task[field] = target.value;
+        setTableStatus("正在保存...");
+        debouncedSave(task);
+        if (field === "status" || field === "priority" || field === "plan_date") renderTasks();
+      });
+
+      $("taskRows").addEventListener("click", async (event) => {
+        const deleteId = event.target.dataset.delete;
+        const completeId = event.target.dataset.complete;
+        const reopenId = event.target.dataset.reopen;
+        if (deleteId) {
+          await jsonFetch(`/api/tasks/${deleteId}`, { method: "DELETE" });
+          tasks = tasks.filter((task) => task.id !== Number(deleteId));
+          renderTasks();
+          return;
+        }
+        const id = Number(completeId || reopenId);
+        if (!id) return;
+        const task = tasks.find((item) => item.id === id);
+        task.status = completeId ? "完成" : "待办";
+        await saveTask(task);
+        renderTasks();
+      });
+
+      $("addBtn").addEventListener("click", async () => {
+        const today = new Date().toISOString().slice(0, 10);
+        const task = await jsonFetch("/api/tasks", {
+          method: "POST",
+          body: JSON.stringify({
+            title: "新任务",
+            status: "待办",
+            priority: "中",
+            plan_date: today,
+            project: "",
+            tags: "",
+            notes: "",
+          }),
+        });
+        tasks.unshift(task);
+        renderTasks();
+      });
+
+      $("quadrantBar").addEventListener("click", (event) => {
+        const card = event.target.closest("[data-quadrant]");
+        if (!card) return;
+        activeQuadrant = activeQuadrant === card.dataset.quadrant ? "" : card.dataset.quadrant;
+        renderTasks();
+      });
+
+      ["search", "statusFilter", "priorityFilter", "archiveFilter"].forEach((id) =>
+        $(id).addEventListener("input", renderTasks),
+      );
+
+      function appendMessage(role, content) {
+        chatHistory.push({ role, content });
+        const node = document.createElement("div");
+        node.className = `msg ${role} ${role === "assistant" ? "markdown" : ""}`;
+        if (role === "assistant") {
+          node.innerHTML = renderMarkdown(content);
+        } else {
+          node.textContent = content;
+        }
+        $("messages").appendChild(node);
+        $("messages").scrollTop = $("messages").scrollHeight;
+      }
+
+      async function sendChat(text) {
+        if (!text.trim()) return;
+        appendMessage("user", text.trim());
+        $("chatInput").value = "";
+        $("sendBtn").disabled = true;
+        $("chatStatus").textContent = "思考中...";
+        try {
+          const data = await jsonFetch("/api/chat", {
+            method: "POST",
+            body: JSON.stringify({ message: text.trim(), history: chatHistory.slice(-8) }),
+          });
+          appendMessage("assistant", data.reply);
+          $("chatStatus").textContent = "";
+        } catch (err) {
+          $("chatStatus").textContent = err.message;
+          $("chatStatus").className = "status error";
+        } finally {
+          $("sendBtn").disabled = false;
+        }
+      }
+
+      async function generateWeeklyReport() {
+        appendMessage("user", "请根据本周已完成归档任务和下周待办生成周报");
+        $("weeklyReportBtn").disabled = true;
+        $("chatStatus").textContent = "正在生成周报...";
+        try {
+          const data = await jsonFetch("/api/weekly-report", { method: "POST", body: "{}" });
+          appendMessage("assistant", data.report);
+          $("chatStatus").textContent = "";
+        } catch (err) {
+          $("chatStatus").textContent = err.message;
+          $("chatStatus").className = "status error";
+        } finally {
+          $("weeklyReportBtn").disabled = false;
+        }
+      }
+
+      $("sendBtn").addEventListener("click", () => sendChat($("chatInput").value));
+      $("weeklyReportBtn").addEventListener("click", generateWeeklyReport);
+      $("chatInput").addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) sendChat($("chatInput").value);
+      });
+      document.querySelectorAll("[data-prompt]").forEach((button) => {
+        button.addEventListener("click", () => sendChat(button.dataset.prompt));
+      });
+
+      $("aiGenerateBtn").addEventListener("click", () => $("generateDialog").showModal());
+      $("closeGenerateBtn").addEventListener("click", () => $("generateDialog").close());
+
+      $("runGenerateBtn").addEventListener("click", async () => {
+        const prompt = $("generatePrompt").value.trim();
+        if (!prompt) {
+          $("generateStatus").textContent = "先写一个目标。";
+          $("generateStatus").className = "status error";
+          return;
+        }
+        $("runGenerateBtn").disabled = true;
+        $("appendGeneratedBtn").disabled = true;
+        $("generateStatus").textContent = "生成中...";
+        $("generateStatus").className = "status";
+        try {
+          const data = await jsonFetch("/api/generate", {
+            method: "POST",
+            body: JSON.stringify({ prompt, horizon: $("generateHorizon").value }),
+          });
+          generatedTasks = data.tasks || [];
+          const skipped = data.skipped || [];
+          $("generatedResult").innerHTML = `
+            <div class="status" style="margin-top: 12px">${escapeHtml(data.summary || "")}</div>
+            ${
+              skipped.length
+                ? `<div class="skipped"><strong>已跳过重复任务</strong><br>${skipped.map(escapeHtml).join("<br>")}</div>`
+                : ""
+            }
+            <div class="generated">
+              ${generatedTasks
+                .map((task, index) => {
+                  const needs = task.needs_input || [];
+                  return `
+                    <div class="generated-row" data-generated-index="${index}">
+                      <strong>${escapeHtml(task.title)}</strong>
+                      <div class="status">${escapeHtml(task.project || "无项目")} · ${escapeHtml(task.priority)} · ${escapeHtml(task.plan_date || "无日期")} · ${escapeHtml(task.tags || "无标签")}</div>
+                      <div>${escapeHtml(task.notes || "")}</div>
+                      ${
+                        needs.length
+                          ? `<div class="needs-input">AI 不确定：${needs.map((field) => (field === "plan_date" ? "DDL" : field === "project" ? "项目归属" : field)).join("、")}，请补充后再追加。</div>`
+                          : ""
+                      }
+                      <div class="generated-grid">
+                        <input data-gen-field="project" data-gen-index="${index}" placeholder="项目" value="${escapeHtml(task.project || "")}" />
+                        <input type="date" data-gen-field="plan_date" data-gen-index="${index}" value="${escapeHtml(task.plan_date || "")}" />
+                        <select data-gen-field="priority" data-gen-index="${index}">
+                          ${["高", "中", "低"].map((v) => `<option ${task.priority === v ? "selected" : ""}>${v}</option>`).join("")}
+                        </select>
+                        <select data-gen-field="status" data-gen-index="${index}">
+                          ${["待办", "进行中", "阻塞"].map((v) => `<option ${task.status === v ? "selected" : ""}>${v}</option>`).join("")}
+                        </select>
+                      </div>
+                    </div>
+                  `;
+                })
+                .join("")}
+            </div>
+          `;
+          $("appendGeneratedBtn").disabled = generatedTasks.length === 0;
+          $("generateStatus").textContent = "预览已生成";
+        } catch (err) {
+          $("generateStatus").textContent = err.message;
+          $("generateStatus").className = "status error";
+        } finally {
+          $("runGenerateBtn").disabled = false;
+        }
+      });
+
+      $("generatedResult").addEventListener("input", (event) => {
+        const index = Number(event.target.dataset.genIndex);
+        const field = event.target.dataset.genField;
+        if (!field || Number.isNaN(index) || !generatedTasks[index]) return;
+        generatedTasks[index][field] = event.target.value;
+        generatedTasks[index].needs_input = (generatedTasks[index].needs_input || []).filter((item) => item !== field);
+      });
+
+      $("appendGeneratedBtn").addEventListener("click", async () => {
+        const missing = generatedTasks.filter((task) => {
+          const needs = task.needs_input || [];
+          return (needs.includes("plan_date") && !task.plan_date) || (needs.includes("project") && !task.project);
+        });
+        if (missing.length) {
+          $("generateStatus").textContent = "还有任务缺少 DDL 或项目归属，请补充后再追加。";
+          $("generateStatus").className = "status error";
+          return;
+        }
+        $("appendGeneratedBtn").disabled = true;
+        for (const task of generatedTasks) {
+          await jsonFetch("/api/tasks", { method: "POST", body: JSON.stringify(task) });
+        }
+        generatedTasks = [];
+        $("generateDialog").close();
+        await loadTasks();
+      });
+
+      loadTasks().catch((err) => setTableStatus(err.message, true));
+    </script>
+  </body>
+</html>
