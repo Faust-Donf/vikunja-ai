@@ -84,6 +84,25 @@ def test_task_completion_sets_and_clears_completed_at(tmp_path, monkeypatch):
     assert reopened["completed_at"] is None
 
 
+def test_task_input_rejects_invalid_status_and_priority(tmp_path, monkeypatch):
+    _, client = load_app(tmp_path, monkeypatch)
+    payload = {
+        "title": "非法字段测试",
+        "status": "随便写",
+        "priority": "高",
+        "plan_date": "2026-06-07",
+        "project": "测试",
+        "tags": "",
+        "notes": "",
+    }
+
+    bad_status = client.post("/api/tasks", json=payload)
+    bad_priority = client.post("/api/tasks", json={**payload, "status": "待办", "priority": "最高"})
+
+    assert bad_status.status_code == 422
+    assert bad_priority.status_code == 422
+
+
 def test_generate_filters_existing_tasks_and_preserves_input_requests(tmp_path, monkeypatch):
     app_module, client = load_app(tmp_path, monkeypatch)
 

@@ -19,3 +19,4 @@
 - Added quick plan-date filters for overdue, today, this week, next 7 days, and undated tasks.
 - Refined the this-week date filter to use the Monday-Sunday calendar week.
 - Added a logout action for clearing the protected task-table session.
+- Added backend validation for task status and priority values.

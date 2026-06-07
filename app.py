@@ -17,7 +17,7 @@ from typing import Any
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 VENUS_API_URL = os.environ["VENUS_API_URL"]
@@ -27,6 +27,9 @@ DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 DB_PATH = DATA_DIR / "plans.db"
 ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN", "").strip()
 AUTH_COOKIE = "personal_plan_session"
+VALID_STATUSES = {"待办", "进行中", "阻塞", "完成"}
+VALID_PRIORITIES = {"高", "中", "低"}
+
 
 class TaskInput(BaseModel):
     title: str = Field(min_length=1, max_length=250)
@@ -36,6 +39,20 @@ class TaskInput(BaseModel):
     project: str = ""
     tags: str = ""
     notes: str = ""
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, value: str) -> str:
+        if value not in VALID_STATUSES:
+            raise ValueError("状态必须是：待办、进行中、阻塞、完成")
+        return value
+
+    @field_validator("priority")
+    @classmethod
+    def validate_priority(cls, value: str) -> str:
+        if value not in VALID_PRIORITIES:
+            raise ValueError("优先级必须是：高、中、低")
+        return value
 
 
 class Task(TaskInput):
@@ -411,10 +428,10 @@ def normalize_import_task(raw: dict[str, Any]) -> dict[str, Any] | None:
     if not title:
         return None
     status = str(raw.get("status") or "待办")
-    if status not in {"待办", "进行中", "阻塞", "完成"}:
+    if status not in VALID_STATUSES:
         status = "待办"
     priority = str(raw.get("priority") or "中")
-    if priority not in {"高", "中", "低"}:
+    if priority not in VALID_PRIORITIES:
         priority = "中"
     return {
         "source_id": str(raw.get("id") or raw.get("source_id") or ""),
@@ -697,10 +714,10 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
             skipped.append(existing)
             continue
         priority = str(item.get("priority") or "中")
-        if priority not in {"高", "中", "低"}:
+        if priority not in VALID_PRIORITIES:
             priority = "中"
         status = str(item.get("status") or "待办")
-        if status not in {"待办", "进行中", "阻塞", "完成"}:
+        if status not in VALID_STATUSES:
             status = "待办"
         tasks.append(
             GeneratedTask(
