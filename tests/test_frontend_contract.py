@@ -8,6 +8,8 @@ def test_frontend_contains_ai_assistant_and_markdown_renderer():
     html = HTML.read_text(encoding="utf-8")
 
     assert "AI助手" in html
+    assert "表格管理 + AI助手" in html
+    assert "表格管理 + ChatAI" not in html
     assert "function renderMarkdown" in html
     assert "node.innerHTML = renderMarkdown(content)" in html
     assert "生成周报" in html
@@ -37,5 +39,8 @@ def test_frontend_contains_export_and_backup_actions():
 
     assert "导出 CSV" in html
     assert "下载备份" in html
+    assert "导入备份" in html
     assert "/api/export.csv" in html
     assert "/api/backup.json" in html
+    assert "/api/import.json" in html
+    assert "importFileInput" in html

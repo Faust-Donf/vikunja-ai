@@ -83,8 +83,18 @@ class WeeklyReportResponse(BaseModel):
     report: str
 
 
+class ImportBackupRequest(BaseModel):
+    tasks: list[dict[str, Any]]
+
+
+class ImportBackupResponse(BaseModel):
+    imported: int
+    skipped: int
+
+
 TASK_COLUMNS = [
     "id",
+    "source_id",
     "title",
     "status",
     "priority",
@@ -120,13 +130,16 @@ def init_db() -> None:
                 notes text not null default '',
                 created_at text not null,
                 updated_at text not null,
-                completed_at text
+                completed_at text,
+                source_id text
             )
             """
         )
         columns = {row["name"] for row in conn.execute("pragma table_info(tasks)").fetchall()}
         if "completed_at" not in columns:
             conn.execute("alter table tasks add column completed_at text")
+        if "source_id" not in columns:
+            conn.execute("alter table tasks add column source_id text")
 
 
 @app.on_event("startup")
@@ -335,14 +348,93 @@ async def backup_json() -> JSONResponse:
     )
 
 
+def normalize_import_task(raw: dict[str, Any]) -> dict[str, Any] | None:
+    title = str(raw.get("title") or "").strip()
+    if not title:
+        return None
+    status = str(raw.get("status") or "待办")
+    if status not in {"待办", "进行中", "阻塞", "完成"}:
+        status = "待办"
+    priority = str(raw.get("priority") or "中")
+    if priority not in {"高", "中", "低"}:
+        priority = "中"
+    return {
+        "source_id": str(raw.get("id") or raw.get("source_id") or ""),
+        "title": title[:250],
+        "status": status,
+        "priority": priority,
+        "plan_date": validate_date(raw.get("plan_date")),
+        "project": str(raw.get("project") or ""),
+        "tags": str(raw.get("tags") or ""),
+        "notes": str(raw.get("notes") or ""),
+        "created_at": str(raw.get("created_at") or now()),
+        "updated_at": str(raw.get("updated_at") or now()),
+        "completed_at": str(raw.get("completed_at") or "") or None,
+    }
+
+
+@app.post("/api/import.json", response_model=ImportBackupResponse)
+async def import_json(payload: ImportBackupRequest) -> ImportBackupResponse:
+    imported = 0
+    skipped = 0
+    with db() as conn:
+        for raw_task in payload.tasks:
+            task = normalize_import_task(raw_task)
+            if task is None:
+                skipped += 1
+                continue
+            if task["source_id"]:
+                existing = conn.execute(
+                    "select id from tasks where source_id = ?",
+                    (task["source_id"],),
+                ).fetchone()
+                if existing:
+                    skipped += 1
+                    continue
+            existing_title = conn.execute(
+                """
+                select id from tasks
+                where title = ? and coalesce(project, '') = ? and coalesce(plan_date, '') = coalesce(?, '')
+                """,
+                (task["title"], task["project"], task["plan_date"]),
+            ).fetchone()
+            if existing_title:
+                skipped += 1
+                continue
+            conn.execute(
+                """
+                insert into tasks (
+                    source_id, title, status, priority, plan_date, project, tags, notes,
+                    created_at, updated_at, completed_at
+                )
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    task["source_id"],
+                    task["title"],
+                    task["status"],
+                    task["priority"],
+                    task["plan_date"],
+                    task["project"],
+                    task["tags"],
+                    task["notes"],
+                    task["created_at"],
+                    task["updated_at"],
+                    task["completed_at"],
+                ),
+            )
+            imported += 1
+    return ImportBackupResponse(imported=imported, skipped=skipped)
+
+
 @app.post("/api/tasks", response_model=Task)
 async def create_task(task: TaskInput) -> Task:
     ts = now()
     with db() as conn:
         cur = conn.execute(
             """
-            insert into tasks (title, status, priority, plan_date, project, tags, notes, created_at, updated_at, completed_at)
-            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            insert into tasks (title, status, priority, plan_date, project, tags, notes, created_at, updated_at, completed_at, source_id)
+            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 task.title,
@@ -355,6 +447,7 @@ async def create_task(task: TaskInput) -> Task:
                 ts,
                 ts,
                 ts if task.status == "完成" else None,
+                None,
             ),
         )
         row = conn.execute("select * from tasks where id = ?", (cur.lastrowid,)).fetchone()

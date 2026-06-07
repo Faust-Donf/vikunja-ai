@@ -179,3 +179,36 @@ def test_export_csv_and_backup_json_include_tasks(tmp_path, monkeypatch):
     assert payload["schema"] == "personal-plan-table/v1"
     assert payload["tasks"][0]["title"] == "导出测试任务"
     assert "exported_at" in payload
+
+
+def test_import_json_merges_backup_and_skips_duplicates(tmp_path, monkeypatch):
+    _, client = load_app(tmp_path, monkeypatch)
+    backup = {
+        "tasks": [
+            {
+                "id": 42,
+                "title": "导入任务",
+                "status": "待办",
+                "priority": "高",
+                "plan_date": "2026-06-08",
+                "project": "导入测试",
+                "tags": "备份",
+                "notes": "从 JSON 备份导入",
+                "created_at": "2026-06-07T00:00:00Z",
+                "updated_at": "2026-06-07T00:00:00Z",
+                "completed_at": None,
+            }
+        ]
+    }
+
+    first = client.post("/api/import.json", json=backup)
+    second = client.post("/api/import.json", json=backup)
+
+    assert first.status_code == 200
+    assert first.json() == {"imported": 1, "skipped": 0}
+    assert second.json() == {"imported": 0, "skipped": 1}
+
+    tasks = client.get("/api/tasks").json()
+    assert len(tasks) == 1
+    assert tasks[0]["title"] == "导入任务"
+    assert tasks[0]["project"] == "导入测试"

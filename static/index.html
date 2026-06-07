@@ -530,11 +530,13 @@
     <div class="shell">
       <header>
         <div>
-          <h1>个人计划表<span class="sub">表格管理 + ChatAI</span></h1>
+          <h1>个人计划表<span class="sub">表格管理 + AI助手</span></h1>
         </div>
         <div class="filters">
           <button class="ghost" id="exportCsvBtn">导出 CSV</button>
           <button class="ghost" id="backupJsonBtn">下载备份</button>
+          <button class="ghost" id="importJsonBtn">导入备份</button>
+          <input id="importFileInput" type="file" accept="application/json,.json" hidden />
           <button class="secondary" id="aiGenerateBtn">AI 生成任务</button>
           <button class="primary" id="addBtn">新增一行</button>
         </div>
@@ -942,6 +944,29 @@
 
       $("backupJsonBtn").addEventListener("click", () => {
         window.location.href = "/api/backup.json";
+      });
+
+      $("importJsonBtn").addEventListener("click", () => {
+        $("importFileInput").click();
+      });
+
+      $("importFileInput").addEventListener("change", async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        setTableStatus("正在导入备份...");
+        try {
+          const payload = JSON.parse(await file.text());
+          const data = await jsonFetch("/api/import.json", {
+            method: "POST",
+            body: JSON.stringify({ tasks: payload.tasks || [] }),
+          });
+          await loadTasks();
+          setTableStatus(`导入 ${data.imported} 条，跳过 ${data.skipped} 条`);
+        } catch (err) {
+          setTableStatus(`导入失败：${err.message}`, true);
+        } finally {
+          event.target.value = "";
+        }
       });
 
       $("quadrantBar").addEventListener("click", (event) => {
