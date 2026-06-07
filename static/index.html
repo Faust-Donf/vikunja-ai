@@ -153,7 +153,7 @@
       }
       .toolbar-main {
         display: grid;
-        grid-template-columns: minmax(220px, 1fr) auto auto auto;
+        grid-template-columns: minmax(220px, 1fr) auto auto auto auto;
         gap: 8px;
         width: 100%;
         align-items: center;
@@ -641,6 +641,14 @@
                 <option>中</option>
                 <option>低</option>
               </select>
+              <select id="dateFilter">
+                <option value="">全部日期</option>
+                <option value="overdue">逾期</option>
+                <option value="today">今天</option>
+                <option value="week">本周</option>
+                <option value="next7">未来 7 天</option>
+                <option value="none">无日期</option>
+              </select>
               <select id="archiveFilter">
                 <option value="active">未归档</option>
                 <option value="done">已归档</option>
@@ -843,6 +851,12 @@
         return new Date().toISOString().slice(0, 10);
       }
 
+      function addDays(value, days) {
+        const date = new Date(`${value}T00:00:00`);
+        date.setDate(date.getDate() + days);
+        return date.toISOString().slice(0, 10);
+      }
+
       function isUrgent(task) {
         return task.plan_date && task.plan_date <= todayString();
       }
@@ -892,10 +906,24 @@
         });
       }
 
+      function dateMatchesFilter(task, filter) {
+        if (!filter) return true;
+        const today = todayString();
+        const planDate = task.plan_date || "";
+        if (filter === "none") return !planDate;
+        if (!planDate) return false;
+        if (filter === "overdue") return planDate < today;
+        if (filter === "today") return planDate === today;
+        if (filter === "week") return planDate >= today && planDate <= addDays(today, 6);
+        if (filter === "next7") return planDate > today && planDate <= addDays(today, 7);
+        return true;
+      }
+
       function filteredTasks() {
         const q = $("search").value.trim().toLowerCase();
         const status = $("statusFilter").value;
         const priority = $("priorityFilter").value;
+        const dateFilter = $("dateFilter").value;
         const archive = $("archiveFilter").value;
         const rows = tasks.filter((task) => {
           const hay = `${task.title} ${task.project} ${task.tags} ${task.notes}`.toLowerCase();
@@ -906,6 +934,7 @@
             (!q || hay.includes(q)) &&
             (!status || task.status === status) &&
             (!priority || task.priority === priority) &&
+            dateMatchesFilter(task, dateFilter) &&
             (!activeQuadrant || quadrantKey(task) === activeQuadrant)
           );
         });
@@ -1200,7 +1229,7 @@
         }
       });
 
-      ["search", "statusFilter", "priorityFilter", "archiveFilter"].forEach((id) =>
+      ["search", "statusFilter", "priorityFilter", "dateFilter", "archiveFilter"].forEach((id) =>
         $(id).addEventListener("input", renderTasks),
       );
 

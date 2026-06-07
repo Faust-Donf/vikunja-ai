@@ -80,3 +80,14 @@ def test_frontend_contains_bulk_task_actions():
     assert "bulkDeleteBtn" in html
     assert "批量完成归档" in html
     assert "确定删除选中的" in html
+
+
+def test_frontend_contains_plan_date_quick_filters():
+    html = HTML.read_text(encoding="utf-8")
+
+    assert 'id="dateFilter"' in html
+    assert "全部日期" in html
+    assert "逾期" in html
+    assert "未来 7 天" in html
+    assert "function dateMatchesFilter" in html
+    assert 'filter === "overdue"' in html
