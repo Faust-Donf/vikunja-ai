@@ -97,3 +97,13 @@ def test_frontend_contains_plan_date_quick_filters():
     assert "function endOfWeek" in html
     assert 'filter === "overdue"' in html
     assert "planDate >= startOfWeek(today)" in html
+
+
+def test_frontend_contains_reset_view_action():
+    html = HTML.read_text(encoding="utf-8")
+
+    assert "resetViewBtn" in html
+    assert "重置视图" in html
+    assert "function resetView" in html
+    assert '$("archiveFilter").value = "active"' in html
+    assert 'sortState = { field: "", direction: "asc" }' in html

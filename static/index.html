@@ -153,7 +153,7 @@
       }
       .toolbar-main {
         display: grid;
-        grid-template-columns: minmax(220px, 1fr) auto auto auto auto;
+        grid-template-columns: minmax(220px, 1fr) auto auto auto auto auto;
         gap: 8px;
         width: 100%;
         align-items: center;
@@ -655,6 +655,7 @@
                 <option value="done">已归档</option>
                 <option value="all">全部任务</option>
               </select>
+              <button class="ghost" id="resetViewBtn">重置视图</button>
             </div>
             <span id="tableStatus" class="board-summary"></span>
           </div>
@@ -1200,6 +1201,20 @@
         selectedIds.clear();
         renderTasks();
       });
+
+      function resetView() {
+        $("search").value = "";
+        $("statusFilter").value = "";
+        $("priorityFilter").value = "";
+        $("dateFilter").value = "";
+        $("archiveFilter").value = "active";
+        activeQuadrant = "";
+        sortState = { field: "", direction: "asc" };
+        selectedIds.clear();
+        renderTasks();
+      }
+
+      $("resetViewBtn").addEventListener("click", resetView);
 
       $("bulkCompleteBtn").addEventListener("click", async () => {
         const selected = selectedTasks().filter((task) => task.status !== "完成");
