@@ -22,3 +22,5 @@
 - Added backend validation for task status and priority values.
 - Added backend validation for task plan dates on create and update.
 - Added a reset-view action for clearing filters, sorting, quadrant selection, and selected rows.
+- Updated README coverage for current table, AI, auth, export, and validation features.
+- Added backend regression coverage for logout clearing authenticated access.

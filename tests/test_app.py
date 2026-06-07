@@ -53,6 +53,22 @@ def test_access_token_protects_task_api_when_enabled(tmp_path, monkeypatch):
     assert allowed.status_code == 200
 
 
+def test_logout_clears_access_cookie(tmp_path, monkeypatch):
+    _, client = load_app_with_access_token(tmp_path, monkeypatch)
+
+    login = client.post("/api/auth/login", json={"access_token": "test-passcode"})
+    allowed = client.get("/api/tasks")
+    logout = client.post("/api/auth/logout")
+    status = client.get("/api/auth/status")
+    blocked = client.get("/api/tasks")
+
+    assert login.status_code == 200
+    assert allowed.status_code == 200
+    assert logout.status_code == 200
+    assert status.json() == {"enabled": True, "authenticated": False}
+    assert blocked.status_code == 401
+
+
 def test_task_completion_sets_and_clears_completed_at(tmp_path, monkeypatch):
     _, client = load_app(tmp_path, monkeypatch)
 
