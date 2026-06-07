@@ -201,6 +201,26 @@
         font-size: 12px;
         font-weight: 750;
       }
+      .sort-button {
+        width: 100%;
+        height: auto;
+        min-height: 28px;
+        padding: 0;
+        background: transparent;
+        color: inherit;
+        border: 0;
+        text-align: left;
+      }
+      .sort-button::after {
+        content: "↕";
+        color: #9aa5b1;
+        font-size: 11px;
+        margin-left: 5px;
+      }
+      .sort-button.active::after {
+        content: attr(data-sort-indicator);
+        color: var(--accent);
+      }
       td input,
       td select,
       td textarea {
@@ -615,14 +635,14 @@
             <table>
               <thead>
                 <tr>
-                  <th class="id-cell">ID</th>
-                  <th class="title-cell">任务</th>
-                  <th>状态</th>
-                  <th>优先级</th>
-                  <th>计划日期</th>
+                  <th class="id-cell"><button class="sort-button" data-sort-field="id">ID</button></th>
+                  <th class="title-cell"><button class="sort-button" data-sort-field="title">任务</button></th>
+                  <th><button class="sort-button" data-sort-field="status">状态</button></th>
+                  <th><button class="sort-button" data-sort-field="priority">优先级</button></th>
+                  <th><button class="sort-button" data-sort-field="plan_date">计划日期</button></th>
                   <th>四象限</th>
-                  <th>项目</th>
-                  <th>标签</th>
+                  <th><button class="sort-button" data-sort-field="project">项目</button></th>
+                  <th><button class="sort-button" data-sort-field="tags">标签</button></th>
                   <th class="notes-cell">备注 / 完成标准</th>
                   <th>操作</th>
                 </tr>
@@ -694,6 +714,7 @@
       let chatHistory = [];
       let generatedTasks = [];
       let activeQuadrant = "";
+      let sortState = { field: "", direction: "asc" };
 
       function escapeHtml(value) {
         return String(value ?? "")
@@ -824,12 +845,32 @@
         return "p-medium";
       }
 
+      function sortValue(task, field) {
+        if (field === "id") return task.id;
+        if (field === "status") return { 进行中: 0, 待办: 1, 阻塞: 2, 完成: 3 }[task.status] ?? 9;
+        if (field === "priority") return { 高: 0, 中: 1, 低: 2 }[task.priority] ?? 9;
+        if (field === "plan_date") return task.plan_date || "9999-12-31";
+        return String(task[field] || "").toLowerCase();
+      }
+
+      function sortedTasks(rows) {
+        if (!sortState.field) return rows;
+        const direction = sortState.direction === "asc" ? 1 : -1;
+        return [...rows].sort((a, b) => {
+          const left = sortValue(a, sortState.field);
+          const right = sortValue(b, sortState.field);
+          if (left < right) return -1 * direction;
+          if (left > right) return 1 * direction;
+          return (b.id - a.id) * direction;
+        });
+      }
+
       function filteredTasks() {
         const q = $("search").value.trim().toLowerCase();
         const status = $("statusFilter").value;
         const priority = $("priorityFilter").value;
         const archive = $("archiveFilter").value;
-        return tasks.filter((task) => {
+        const rows = tasks.filter((task) => {
           const hay = `${task.title} ${task.project} ${task.tags} ${task.notes}`.toLowerCase();
           const archiveMatch =
             archive === "all" || (archive === "done" ? task.status === "完成" : task.status !== "完成");
@@ -840,6 +881,15 @@
             (!priority || task.priority === priority) &&
             (!activeQuadrant || quadrantKey(task) === activeQuadrant)
           );
+        });
+        return sortedTasks(rows);
+      }
+
+      function renderSortHeaders() {
+        document.querySelectorAll("[data-sort-field]").forEach((button) => {
+          const active = button.dataset.sortField === sortState.field;
+          button.classList.toggle("active", active);
+          button.dataset.sortIndicator = sortState.direction === "asc" ? "↑" : "↓";
         });
       }
 
@@ -865,6 +915,7 @@
       function renderTasks() {
         const visible = filteredTasks();
         renderQuadrants();
+        renderSortHeaders();
         $("empty").hidden = visible.length > 0;
         $("taskRows").innerHTML = visible
           .map(
@@ -1028,6 +1079,17 @@
         const card = event.target.closest("[data-quadrant]");
         if (!card) return;
         activeQuadrant = activeQuadrant === card.dataset.quadrant ? "" : card.dataset.quadrant;
+        renderTasks();
+      });
+
+      document.querySelector("thead").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-sort-field]");
+        if (!button) return;
+        const field = button.dataset.sortField;
+        sortState = {
+          field,
+          direction: sortState.field === field && sortState.direction === "asc" ? "desc" : "asc",
+        };
         renderTasks();
       });
 

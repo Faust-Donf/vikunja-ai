@@ -14,3 +14,4 @@
 - Added JSON backup import with duplicate-safe merge behavior.
 - Replaced deprecated FastAPI startup hook with lifespan initialization.
 - Added optional access-token login for protecting personal tasks and AI endpoints.
+- Added clickable table-column sorting for spreadsheet-style task review.

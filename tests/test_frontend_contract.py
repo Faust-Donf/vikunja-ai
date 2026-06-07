@@ -56,3 +56,14 @@ def test_frontend_contains_access_token_login_flow():
     assert "ensureAuthenticated" in html
     assert "[hidden]" in html
     assert "display: none !important" in html
+
+
+def test_frontend_contains_table_sorting_flow():
+    html = HTML.read_text(encoding="utf-8")
+
+    assert "sortState" in html
+    assert "function sortedTasks" in html
+    assert "function renderSortHeaders" in html
+    assert 'data-sort-field="priority"' in html
+    assert 'data-sort-field="plan_date"' in html
+    assert "sort-button active" not in html
