@@ -308,6 +308,25 @@
         align-items: center;
         flex-wrap: wrap;
       }
+      .bulkbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--line);
+        background: #f7fbf9;
+      }
+      .bulkbar strong {
+        color: #2d463f;
+      }
+      .select-cell {
+        width: 42px;
+        text-align: center;
+      }
+      .select-cell input {
+        width: 16px;
+        height: 16px;
+      }
       .quadrant-bar {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -630,11 +649,18 @@
             </div>
             <span id="tableStatus" class="board-summary"></span>
           </div>
+          <div class="bulkbar" id="bulkBar" hidden>
+            <strong id="selectedSummary">已选 0 条</strong>
+            <button class="complete" id="bulkCompleteBtn">批量完成归档</button>
+            <button class="danger" id="bulkDeleteBtn">批量删除</button>
+            <button class="ghost" id="clearSelectionBtn">清除选择</button>
+          </div>
           <div class="quadrant-bar" id="quadrantBar"></div>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
+                  <th class="select-cell"><input type="checkbox" id="selectVisible" title="选择当前可见任务" /></th>
                   <th class="id-cell"><button class="sort-button" data-sort-field="id">ID</button></th>
                   <th class="title-cell"><button class="sort-button" data-sort-field="title">任务</button></th>
                   <th><button class="sort-button" data-sort-field="status">状态</button></th>
@@ -715,6 +741,7 @@
       let generatedTasks = [];
       let activeQuadrant = "";
       let sortState = { field: "", direction: "asc" };
+      const selectedIds = new Set();
 
       function escapeHtml(value) {
         return String(value ?? "")
@@ -893,6 +920,21 @@
         });
       }
 
+      function selectedTasks() {
+        return tasks.filter((task) => selectedIds.has(task.id));
+      }
+
+      function renderBulkBar(visible) {
+        for (const id of [...selectedIds]) {
+          if (!tasks.some((task) => task.id === id)) selectedIds.delete(id);
+        }
+        const selectedVisibleCount = visible.filter((task) => selectedIds.has(task.id)).length;
+        $("bulkBar").hidden = selectedIds.size === 0;
+        $("selectedSummary").textContent = `已选 ${selectedIds.size} 条`;
+        $("selectVisible").checked = visible.length > 0 && selectedVisibleCount === visible.length;
+        $("selectVisible").indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < visible.length;
+      }
+
       function renderQuadrants() {
         const activeTasks = tasks.filter((task) => task.status !== "完成");
         $("quadrantBar").innerHTML = Object.entries(quadrantMeta)
@@ -916,6 +958,7 @@
         const visible = filteredTasks();
         renderQuadrants();
         renderSortHeaders();
+        renderBulkBar(visible);
         $("empty").hidden = visible.length > 0;
         $("taskRows").innerHTML = visible
           .map(
@@ -923,6 +966,7 @@
               const q = quadrantMeta[quadrantKey(task)];
               return `
               <tr data-id="${task.id}" class="${priorityClass(task.priority)} ${task.status === "完成" ? "done-row" : ""}">
+                <td class="select-cell"><input type="checkbox" data-select-task="${task.id}" ${selectedIds.has(task.id) ? "checked" : ""} /></td>
                 <td class="id-cell">#${task.id}</td>
                 <td class="title-cell"><input data-field="title" value="${escapeHtml(task.title)}" /></td>
                 <td>
@@ -1009,12 +1053,21 @@
       });
 
       $("taskRows").addEventListener("click", async (event) => {
+        const selectId = event.target.dataset.selectTask;
+        if (selectId) {
+          const id = Number(selectId);
+          if (event.target.checked) selectedIds.add(id);
+          else selectedIds.delete(id);
+          renderTasks();
+          return;
+        }
         const deleteId = event.target.dataset.delete;
         const completeId = event.target.dataset.complete;
         const reopenId = event.target.dataset.reopen;
         if (deleteId) {
           await jsonFetch(`/api/tasks/${deleteId}`, { method: "DELETE" });
           tasks = tasks.filter((task) => task.id !== Number(deleteId));
+          selectedIds.delete(Number(deleteId));
           renderTasks();
           return;
         }
@@ -1091,6 +1144,60 @@
           direction: sortState.field === field && sortState.direction === "asc" ? "desc" : "asc",
         };
         renderTasks();
+      });
+
+      $("selectVisible").addEventListener("change", (event) => {
+        const visible = filteredTasks();
+        for (const task of visible) {
+          if (event.target.checked) selectedIds.add(task.id);
+          else selectedIds.delete(task.id);
+        }
+        renderTasks();
+      });
+
+      $("clearSelectionBtn").addEventListener("click", () => {
+        selectedIds.clear();
+        renderTasks();
+      });
+
+      $("bulkCompleteBtn").addEventListener("click", async () => {
+        const selected = selectedTasks().filter((task) => task.status !== "完成");
+        if (!selected.length) return;
+        $("bulkCompleteBtn").disabled = true;
+        setTableStatus("正在批量归档...");
+        try {
+          for (const task of selected) {
+            task.status = "完成";
+            await saveTask(task);
+          }
+          selectedIds.clear();
+          setTableStatus(`已归档 ${selected.length} 条任务`);
+          await loadTasks();
+        } catch (err) {
+          setTableStatus(err.message, true);
+        } finally {
+          $("bulkCompleteBtn").disabled = false;
+        }
+      });
+
+      $("bulkDeleteBtn").addEventListener("click", async () => {
+        const selected = selectedTasks();
+        if (!selected.length || !window.confirm(`确定删除选中的 ${selected.length} 条任务？`)) return;
+        $("bulkDeleteBtn").disabled = true;
+        setTableStatus("正在批量删除...");
+        try {
+          for (const task of selected) {
+            await jsonFetch(`/api/tasks/${task.id}`, { method: "DELETE" });
+            selectedIds.delete(task.id);
+          }
+          tasks = tasks.filter((task) => !selected.some((item) => item.id === task.id));
+          setTableStatus(`已删除 ${selected.length} 条任务`);
+          renderTasks();
+        } catch (err) {
+          setTableStatus(err.message, true);
+        } finally {
+          $("bulkDeleteBtn").disabled = false;
+        }
       });
 
       ["search", "statusFilter", "priorityFilter", "archiveFilter"].forEach((id) =>

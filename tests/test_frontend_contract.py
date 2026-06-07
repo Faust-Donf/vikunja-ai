@@ -67,3 +67,16 @@ def test_frontend_contains_table_sorting_flow():
     assert 'data-sort-field="priority"' in html
     assert 'data-sort-field="plan_date"' in html
     assert "sort-button active" not in html
+
+
+def test_frontend_contains_bulk_task_actions():
+    html = HTML.read_text(encoding="utf-8")
+
+    assert "bulkBar" in html
+    assert "selectedIds" in html
+    assert "function selectedTasks" in html
+    assert "selectVisible" in html
+    assert "bulkCompleteBtn" in html
+    assert "bulkDeleteBtn" in html
+    assert "批量完成归档" in html
+    assert "确定删除选中的" in html

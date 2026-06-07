@@ -15,3 +15,4 @@
 - Replaced deprecated FastAPI startup hook with lifespan initialization.
 - Added optional access-token login for protecting personal tasks and AI endpoints.
 - Added clickable table-column sorting for spreadsheet-style task review.
+- Added bulk selection with batch completion archive and deletion actions.
