@@ -857,6 +857,17 @@
         return date.toISOString().slice(0, 10);
       }
 
+      function startOfWeek(value) {
+        const date = new Date(`${value}T00:00:00`);
+        const day = date.getDay() || 7;
+        date.setDate(date.getDate() - day + 1);
+        return date.toISOString().slice(0, 10);
+      }
+
+      function endOfWeek(value) {
+        return addDays(startOfWeek(value), 6);
+      }
+
       function isUrgent(task) {
         return task.plan_date && task.plan_date <= todayString();
       }
@@ -914,7 +925,7 @@
         if (!planDate) return false;
         if (filter === "overdue") return planDate < today;
         if (filter === "today") return planDate === today;
-        if (filter === "week") return planDate >= today && planDate <= addDays(today, 6);
+        if (filter === "week") return planDate >= startOfWeek(today) && planDate <= endOfWeek(today);
         if (filter === "next7") return planDate > today && planDate <= addDays(today, 7);
         return true;
       }

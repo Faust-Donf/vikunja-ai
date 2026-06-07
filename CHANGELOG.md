@@ -17,3 +17,4 @@
 - Added clickable table-column sorting for spreadsheet-style task review.
 - Added bulk selection with batch completion archive and deletion actions.
 - Added quick plan-date filters for overdue, today, this week, next 7 days, and undated tasks.
+- Refined the this-week date filter to use the Monday-Sunday calendar week.

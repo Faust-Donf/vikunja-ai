@@ -90,4 +90,7 @@ def test_frontend_contains_plan_date_quick_filters():
     assert "逾期" in html
     assert "未来 7 天" in html
     assert "function dateMatchesFilter" in html
+    assert "function startOfWeek" in html
+    assert "function endOfWeek" in html
     assert 'filter === "overdue"' in html
+    assert "planDate >= startOfWeek(today)" in html
