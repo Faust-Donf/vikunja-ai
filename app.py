@@ -413,7 +413,7 @@ async def export_csv() -> StreamingResponse:
     buffer.seek(0)
     filename = f"personal-plan-tasks-{date.today().isoformat()}.csv"
     return StreamingResponse(
-        iter([buffer.getvalue()]),
+        iter(["\ufeff" + buffer.getvalue()]),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

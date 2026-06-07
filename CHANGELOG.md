@@ -25,3 +25,4 @@
 - Updated README coverage for current table, AI, auth, export, and validation features.
 - Added backend regression coverage for logout clearing authenticated access.
 - Changed delete-task behavior to return 404 when the task is already missing.
+- Added UTF-8 BOM to CSV export for better direct opening in Excel.

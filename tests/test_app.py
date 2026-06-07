@@ -262,6 +262,7 @@ def test_export_csv_and_backup_json_include_tasks(tmp_path, monkeypatch):
     csv_response = client.get("/api/export.csv")
     assert csv_response.status_code == 200
     assert csv_response.headers["content-type"].startswith("text/csv")
+    assert csv_response.content.startswith(b"\xef\xbb\xbf")
     assert "导出测试任务" in csv_response.text
     assert "completed_at" in csv_response.text.splitlines()[0]
 
