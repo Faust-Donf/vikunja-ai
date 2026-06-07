@@ -620,6 +620,7 @@
           <input id="importFileInput" type="file" accept="application/json,.json" hidden />
           <button class="secondary" id="aiGenerateBtn">AI 生成任务</button>
           <button class="primary" id="addBtn">新增一行</button>
+          <button class="ghost" id="logoutBtn">退出</button>
         </div>
       </header>
 
@@ -1413,6 +1414,15 @@
           $("authStatus").textContent = err.message;
           $("authStatus").className = "status error";
         }
+      });
+
+      $("logoutBtn").addEventListener("click", async () => {
+        await jsonFetch("/api/auth/logout", { method: "POST", body: "{}" });
+        tasks = [];
+        selectedIds.clear();
+        $("appShell").hidden = true;
+        $("authScreen").hidden = false;
+        $("accessTokenInput").focus();
       });
 
       ensureAuthenticated().catch((err) => {

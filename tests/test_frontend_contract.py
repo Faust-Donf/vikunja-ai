@@ -53,6 +53,9 @@ def test_frontend_contains_access_token_login_flow():
     assert "accessTokenInput" in html
     assert "/api/auth/status" in html
     assert "/api/auth/login" in html
+    assert "/api/auth/logout" in html
+    assert "logoutBtn" in html
+    assert "退出" in html
     assert "ensureAuthenticated" in html
     assert "[hidden]" in html
     assert "display: none !important" in html
