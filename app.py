@@ -6,6 +6,7 @@ import json
 import os
 import re
 import sqlite3
+from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -22,9 +23,6 @@ VENUS_API_KEY = os.environ["VENUS_API_KEY"]
 VENUS_MODEL = os.environ.get("VENUS_MODEL", "hy3-preview")
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 DB_PATH = DATA_DIR / "plans.db"
-
-app = FastAPI(title="个人计划表")
-
 
 class TaskInput(BaseModel):
     title: str = Field(min_length=1, max_length=250)
@@ -142,9 +140,13 @@ def init_db() -> None:
             conn.execute("alter table tasks add column source_id text")
 
 
-@app.on_event("startup")
-def startup() -> None:
+@asynccontextmanager
+async def lifespan(_: FastAPI):
     init_db()
+    yield
+
+
+app = FastAPI(title="个人计划表", lifespan=lifespan)
 
 
 def row_to_task(row: sqlite3.Row) -> Task:
