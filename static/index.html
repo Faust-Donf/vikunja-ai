@@ -26,9 +26,14 @@
       [hidden] {
         display: none !important;
       }
+      html,
+      body {
+        width: 100%;
+        min-width: 0;
+        background: var(--bg);
+      }
       body {
         margin: 0;
-        background: var(--bg);
         color: var(--ink);
         font: 14px/1.45 "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
       }
@@ -97,6 +102,8 @@
         margin-top: 10px;
       }
       .shell {
+        width: 100%;
+        min-width: 0;
         min-height: 100vh;
         display: grid;
         grid-template-rows: auto 1fr;
@@ -126,9 +133,11 @@
       }
       .layout {
         display: grid;
-        grid-template-columns: minmax(680px, 1fr) 360px;
+        grid-template-columns: minmax(0, 1fr) clamp(360px, 27vw, 560px);
         gap: 16px;
         padding: 16px;
+        width: 100%;
+        min-width: 0;
       }
       .board,
       .chat {
@@ -341,14 +350,14 @@
         border: 1px solid var(--line);
         border-radius: 8px;
         height: auto;
-        min-height: 76px;
-        padding: 12px 14px;
+        min-height: 82px;
+        padding: 13px 14px;
         background: #fff;
         cursor: pointer;
         display: grid;
         grid-template-columns: 6px minmax(0, 1fr);
         gap: 12px;
-        align-items: center;
+        align-items: stretch;
         text-align: left;
         color: inherit;
       }
@@ -374,7 +383,8 @@
       }
       .quadrant-dot {
         width: 6px;
-        height: 48px;
+        height: 100%;
+        min-height: 52px;
         border-radius: 999px;
         background: #93a0ad;
       }
@@ -392,15 +402,20 @@
       }
       .quadrant-content {
         min-width: 0;
+        display: grid;
+        grid-template-rows: auto auto auto;
+        align-content: center;
       }
       .quadrant-head {
-        display: flex;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
         align-items: center;
-        justify-content: space-between;
         gap: 8px;
+        min-height: 22px;
       }
       .quadrant-name {
         font-weight: 800;
+        line-height: 1.2;
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -409,22 +424,26 @@
       .quadrant-action {
         flex: 0 0 auto;
         border-radius: 999px;
-        padding: 2px 8px;
+        padding: 2px 9px;
         background: rgba(255, 255, 255, 0.7);
         color: #596573;
         font-size: 11px;
         font-weight: 750;
+        line-height: 1.35;
+        align-self: center;
       }
       .quadrant-count {
         color: var(--muted);
         font-size: 12px;
-        margin-top: 7px;
+        margin-top: 8px;
         font-weight: 750;
+        line-height: 1.25;
       }
       .quadrant-rule {
         color: #7a8490;
         font-size: 11px;
-        margin-top: 2px;
+        margin-top: 3px;
+        line-height: 1.25;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -459,10 +478,14 @@
       }
       .quick {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
         gap: 8px;
         padding: 12px;
         border-bottom: 1px solid var(--line);
+      }
+      .quick button {
+        min-width: 0;
+        white-space: nowrap;
       }
       .messages {
         overflow: auto;
@@ -514,6 +537,26 @@
       .markdown li {
         margin: 4px 0;
       }
+      .markdown strong {
+        font-weight: 800;
+        color: #1f2a36;
+      }
+      .markdown em {
+        color: #4e5c68;
+      }
+      .markdown code {
+        border-radius: 4px;
+        padding: 1px 5px;
+        background: #eef2f6;
+        color: #22313f;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+      }
+      .markdown a {
+        color: var(--accent);
+        text-decoration: none;
+        border-bottom: 1px solid rgba(20, 107, 99, 0.3);
+      }
       .composer {
         border-top: 1px solid var(--line);
         padding: 12px;
@@ -532,6 +575,12 @@
         justify-content: space-between;
         gap: 8px;
         margin-top: 8px;
+      }
+      .composer-actions .status {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .status {
         color: var(--muted);
@@ -611,13 +660,15 @@
         font-size: 12px;
         margin-top: 6px;
       }
-      @media (max-width: 1050px) {
+      @media (max-width: 860px) {
         .layout {
           grid-template-columns: 1fr;
         }
         .chat {
           max-height: none;
         }
+      }
+      @media (max-width: 1050px) {
         .quadrant-bar {
           grid-template-columns: 1fr 1fr;
         }
@@ -802,10 +853,19 @@
             listType = "";
           }
         };
-        const inline = (text) =>
-          escapeHtml(text)
-            .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-            .replace(/`(.+?)`/g, "<code>$1</code>");
+        const inline = (text) => {
+          const codeSpans = [];
+          let safe = escapeHtml(text).replace(/`([^`]+)`/g, (_, code) => {
+            codeSpans.push(`<code>${code}</code>`);
+            return `@@CODE_${codeSpans.length - 1}@@`;
+          });
+          safe = safe
+            .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+            .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+            .replace(/__([^_]+)__/g, "<strong>$1</strong>")
+            .replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
+          return safe.replace(/@@CODE_(\d+)@@/g, (_, index) => codeSpans[Number(index)] || "");
+        };
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed) {

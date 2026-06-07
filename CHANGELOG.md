@@ -26,3 +26,8 @@
 - Added backend regression coverage for logout clearing authenticated access.
 - Changed delete-task behavior to return 404 when the task is already missing.
 - Added UTF-8 BOM to CSV export for better direct opening in Excel.
+
+### Fixed
+
+- Fixed AI assistant Markdown reply rendering for ordered lists and bold text.
+- Fixed the right-side AI assistant panel width and quadrant card title alignment.

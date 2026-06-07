@@ -1,4 +1,10 @@
+import json
+import re
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 
 HTML = Path(__file__).resolve().parents[1] / "static" / "index.html"
@@ -13,6 +19,25 @@ def test_frontend_contains_ai_assistant_and_markdown_renderer():
     assert "function renderMarkdown" in html
     assert "node.innerHTML = renderMarkdown(content)" in html
     assert "生成周报" in html
+
+
+def test_markdown_renderer_compiles_ai_reply_sample():
+    if shutil.which("node") is None:
+        pytest.skip("node is required to execute the frontend markdown renderer")
+
+    html = HTML.read_text(encoding="utf-8")
+    script = re.search(r"function escapeHtml[\s\S]+?async function jsonFetch", html)
+    assert script is not None
+    renderer = script.group(0).removesuffix("async function jsonFetch")
+    sample = "结合任务优先级：\n1. **优先完成#1 验证表格任务保存与编辑**：今天内闭环。\n2. **推进#10 适配发布流水线剩余工作**：避免后续时间紧张。"
+    js = f"{renderer}\nconsole.log(renderMarkdown({json.dumps(sample)}));"
+
+    result = subprocess.run(["node", "-e", js], check=True, capture_output=True, text=True)
+
+    assert "<p>结合任务优先级：</p>" in result.stdout
+    assert "<ol>" in result.stdout
+    assert "<li><strong>优先完成#1 验证表格任务保存与编辑</strong>：今天内闭环。</li>" in result.stdout
+    assert "**" not in result.stdout
 
 
 def test_frontend_contains_generation_review_flow():
