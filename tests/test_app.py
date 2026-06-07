@@ -84,7 +84,7 @@ def test_task_completion_sets_and_clears_completed_at(tmp_path, monkeypatch):
     assert reopened["completed_at"] is None
 
 
-def test_task_input_rejects_invalid_status_and_priority(tmp_path, monkeypatch):
+def test_task_input_rejects_invalid_status_priority_and_plan_date(tmp_path, monkeypatch):
     _, client = load_app(tmp_path, monkeypatch)
     payload = {
         "title": "非法字段测试",
@@ -98,9 +98,11 @@ def test_task_input_rejects_invalid_status_and_priority(tmp_path, monkeypatch):
 
     bad_status = client.post("/api/tasks", json=payload)
     bad_priority = client.post("/api/tasks", json={**payload, "status": "待办", "priority": "最高"})
+    bad_plan_date = client.post("/api/tasks", json={**payload, "status": "待办", "plan_date": "下周三"})
 
     assert bad_status.status_code == 422
     assert bad_priority.status_code == 422
+    assert bad_plan_date.status_code == 422
 
 
 def test_generate_filters_existing_tasks_and_preserves_input_requests(tmp_path, monkeypatch):

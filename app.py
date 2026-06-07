@@ -54,6 +54,16 @@ class TaskInput(BaseModel):
             raise ValueError("优先级必须是：高、中、低")
         return value
 
+    @field_validator("plan_date")
+    @classmethod
+    def validate_plan_date(cls, value: str | None) -> str | None:
+        if not value:
+            return None
+        try:
+            return date.fromisoformat(value).isoformat()
+        except ValueError as exc:
+            raise ValueError("计划日期必须是 YYYY-MM-DD") from exc
+
 
 class Task(TaskInput):
     id: int
@@ -515,7 +525,7 @@ async def create_task(task: TaskInput) -> Task:
                 task.title,
                 task.status,
                 task.priority,
-                validate_date(task.plan_date),
+                task.plan_date,
                 task.project,
                 task.tags,
                 task.notes,
@@ -550,7 +560,7 @@ async def update_task(task_id: int, task: TaskInput) -> Task:
                 task.title,
                 task.status,
                 task.priority,
-                validate_date(task.plan_date),
+                task.plan_date,
                 task.project,
                 task.tags,
                 task.notes,
