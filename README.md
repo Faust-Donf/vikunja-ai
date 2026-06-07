@@ -20,6 +20,7 @@
 - `VENUS_API_KEY`
 - `VENUS_MODEL`
 - `DATA_DIR`
+- `ACCESS_TOKEN`：可选。设置后访问任务表和 AI 接口需要先输入口令。
 
 ## 本地测试
 

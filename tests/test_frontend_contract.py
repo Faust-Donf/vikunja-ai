@@ -44,3 +44,15 @@ def test_frontend_contains_export_and_backup_actions():
     assert "/api/backup.json" in html
     assert "/api/import.json" in html
     assert "importFileInput" in html
+
+
+def test_frontend_contains_access_token_login_flow():
+    html = HTML.read_text(encoding="utf-8")
+
+    assert "authScreen" in html
+    assert "accessTokenInput" in html
+    assert "/api/auth/status" in html
+    assert "/api/auth/login" in html
+    assert "ensureAuthenticated" in html
+    assert "[hidden]" in html
+    assert "display: none !important" in html

@@ -13,12 +13,44 @@ def load_app(tmp_path, monkeypatch):
     monkeypatch.setenv("VENUS_API_KEY", "test-key")
     monkeypatch.setenv("VENUS_MODEL", "test-model")
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.delenv("ACCESS_TOKEN", raising=False)
 
     import app
 
     app = importlib.reload(app)
     app.init_db()
     return app, TestClient(app.app)
+
+
+def load_app_with_access_token(tmp_path, monkeypatch, passcode="test-passcode"):
+    monkeypatch.setenv("VENUS_API_URL", "http://venus.invalid/chat")
+    monkeypatch.setenv("VENUS_API_KEY", "test-key")
+    monkeypatch.setenv("VENUS_MODEL", "test-model")
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("ACCESS_TOKEN", passcode)
+
+    import app
+
+    app = importlib.reload(app)
+    app.init_db()
+    return app, TestClient(app.app)
+
+
+def test_access_token_protects_task_api_when_enabled(tmp_path, monkeypatch):
+    _, client = load_app_with_access_token(tmp_path, monkeypatch)
+
+    status = client.get("/api/auth/status")
+    blocked = client.get("/api/tasks")
+    wrong_login = client.post("/api/auth/login", json={"access_token": "wrong"})
+    login = client.post("/api/auth/login", json={"access_token": "test-passcode"})
+    allowed = client.get("/api/tasks")
+
+    assert status.json() == {"enabled": True, "authenticated": False}
+    assert blocked.status_code == 401
+    assert wrong_login.status_code == 401
+    assert login.status_code == 200
+    assert login.cookies.get("personal_plan_session")
+    assert allowed.status_code == 200
 
 
 def test_task_completion_sets_and_clears_completed_at(tmp_path, monkeypatch):

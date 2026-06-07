@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import csv
+import hashlib
+import hmac
 import io
 import json
 import os
@@ -13,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -23,6 +25,8 @@ VENUS_API_KEY = os.environ["VENUS_API_KEY"]
 VENUS_MODEL = os.environ.get("VENUS_MODEL", "hy3-preview")
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 DB_PATH = DATA_DIR / "plans.db"
+ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN", "").strip()
+AUTH_COOKIE = "personal_plan_session"
 
 class TaskInput(BaseModel):
     title: str = Field(min_length=1, max_length=250)
@@ -90,6 +94,10 @@ class ImportBackupResponse(BaseModel):
     skipped: int
 
 
+class LoginRequest(BaseModel):
+    access_token: str = Field(min_length=1)
+
+
 TASK_COLUMNS = [
     "id",
     "source_id",
@@ -147,6 +155,25 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="个人计划表", lifespan=lifespan)
+
+
+def auth_enabled() -> bool:
+    return bool(ACCESS_TOKEN)
+
+
+def auth_cookie_value() -> str:
+    return hashlib.sha256(ACCESS_TOKEN.encode("utf-8")).hexdigest()
+
+
+def is_authenticated(request: Request) -> bool:
+    if not auth_enabled():
+        return True
+    return hmac.compare_digest(request.cookies.get(AUTH_COOKIE, ""), auth_cookie_value())
+
+
+def require_access(request: Request) -> None:
+    if not is_authenticated(request):
+        raise HTTPException(401, "请先登录")
 
 
 def row_to_task(row: sqlite3.Row) -> Task:
@@ -310,17 +337,46 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/auth/status")
+async def auth_status(request: Request) -> dict[str, bool]:
+    return {"enabled": auth_enabled(), "authenticated": is_authenticated(request)}
+
+
+@app.post("/api/auth/login")
+async def auth_login(req: LoginRequest) -> JSONResponse:
+    if not auth_enabled():
+        return JSONResponse({"authenticated": True})
+    if not hmac.compare_digest(req.access_token, ACCESS_TOKEN):
+        raise HTTPException(401, "访问口令不正确")
+    response = JSONResponse({"authenticated": True})
+    response.set_cookie(
+        AUTH_COOKIE,
+        auth_cookie_value(),
+        httponly=True,
+        max_age=60 * 60 * 24 * 30,
+        samesite="lax",
+    )
+    return response
+
+
+@app.post("/api/auth/logout")
+async def auth_logout() -> JSONResponse:
+    response = JSONResponse({"authenticated": False})
+    response.delete_cookie(AUTH_COOKIE)
+    return response
+
+
 @app.get("/favicon.ico")
 async def favicon() -> Response:
     return Response(status_code=204)
 
 
-@app.get("/api/tasks", response_model=list[Task])
+@app.get("/api/tasks", response_model=list[Task], dependencies=[Depends(require_access)])
 async def list_tasks() -> list[Task]:
     return [row_to_task(row) for row in list_task_rows()]
 
 
-@app.get("/api/export.csv")
+@app.get("/api/export.csv", dependencies=[Depends(require_access)])
 async def export_csv() -> StreamingResponse:
     buffer = io.StringIO()
     writer = csv.DictWriter(buffer, fieldnames=TASK_COLUMNS)
@@ -336,7 +392,7 @@ async def export_csv() -> StreamingResponse:
     )
 
 
-@app.get("/api/backup.json")
+@app.get("/api/backup.json", dependencies=[Depends(require_access)])
 async def backup_json() -> JSONResponse:
     payload = {
         "exported_at": now(),
@@ -375,7 +431,7 @@ def normalize_import_task(raw: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-@app.post("/api/import.json", response_model=ImportBackupResponse)
+@app.post("/api/import.json", response_model=ImportBackupResponse, dependencies=[Depends(require_access)])
 async def import_json(payload: ImportBackupRequest) -> ImportBackupResponse:
     imported = 0
     skipped = 0
@@ -429,7 +485,7 @@ async def import_json(payload: ImportBackupRequest) -> ImportBackupResponse:
     return ImportBackupResponse(imported=imported, skipped=skipped)
 
 
-@app.post("/api/tasks", response_model=Task)
+@app.post("/api/tasks", response_model=Task, dependencies=[Depends(require_access)])
 async def create_task(task: TaskInput) -> Task:
     ts = now()
     with db() as conn:
@@ -456,7 +512,7 @@ async def create_task(task: TaskInput) -> Task:
     return row_to_task(row)
 
 
-@app.put("/api/tasks/{task_id}", response_model=Task)
+@app.put("/api/tasks/{task_id}", response_model=Task, dependencies=[Depends(require_access)])
 async def update_task(task_id: int, task: TaskInput) -> Task:
     with db() as conn:
         old = conn.execute("select status, completed_at from tasks where id = ?", (task_id,)).fetchone()
@@ -492,14 +548,14 @@ async def update_task(task_id: int, task: TaskInput) -> Task:
     return row_to_task(row)
 
 
-@app.delete("/api/tasks/{task_id}")
+@app.delete("/api/tasks/{task_id}", dependencies=[Depends(require_access)])
 async def delete_task(task_id: int) -> dict[str, int]:
     with db() as conn:
         cur = conn.execute("delete from tasks where id = ?", (task_id,))
     return {"deleted": cur.rowcount}
 
 
-@app.post("/api/chat", response_model=ChatResponse)
+@app.post("/api/chat", response_model=ChatResponse, dependencies=[Depends(require_access)])
 async def chat(req: ChatRequest) -> ChatResponse:
     history = [
         {"role": msg.role, "content": msg.content}
@@ -510,7 +566,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
         {
             "role": "system",
             "content": (
-                "你是一个中文个人计划管理 ChatAI。你能基于用户当前任务表，"
+                "你是一个中文个人计划管理 AI助手。你能基于用户当前任务表，"
                 "帮助梳理优先级、拆解任务、做日计划、周复盘。回答要直接、可执行。"
             ),
         },
@@ -521,7 +577,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
     return ChatResponse(reply=await call_venus(messages, temperature=0.4))
 
 
-@app.post("/api/weekly-report", response_model=WeeklyReportResponse)
+@app.post("/api/weekly-report", response_model=WeeklyReportResponse, dependencies=[Depends(require_access)])
 async def weekly_report() -> WeeklyReportResponse:
     start, end, next_start, next_end = week_range()
     start_s, end_s = start.isoformat(), end.isoformat()
@@ -581,7 +637,7 @@ async def weekly_report() -> WeeklyReportResponse:
     return WeeklyReportResponse(report=await call_venus(messages, temperature=0.35))
 
 
-@app.post("/api/generate", response_model=GenerateResponse)
+@app.post("/api/generate", response_model=GenerateResponse, dependencies=[Depends(require_access)])
 async def generate(req: GenerateRequest) -> GenerateResponse:
     today = date.today().isoformat()
     prompt = f"""

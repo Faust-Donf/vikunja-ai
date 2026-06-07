@@ -13,3 +13,4 @@
 - Added CSV export and JSON backup download.
 - Added JSON backup import with duplicate-safe merge behavior.
 - Replaced deprecated FastAPI startup hook with lifespan initialization.
+- Added optional access-token login for protecting personal tasks and AI endpoints.
