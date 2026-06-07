@@ -10,3 +10,4 @@
 - Added AI-generated task review flow with duplicate skipping and missing DDL/project completion.
 - Added backend and frontend contract tests.
 - Added tests to the Docker image for server-side verification.
+- Added CSV export and JSON backup download.

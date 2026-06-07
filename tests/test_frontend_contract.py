@@ -30,3 +30,12 @@ def test_frontend_contains_quadrant_layout_rules():
     assert "高优先级 + 今天/逾期" in html
     assert "非高优先级 + 非紧急" in html
     assert "toolbar-main" in html
+
+
+def test_frontend_contains_export_and_backup_actions():
+    html = HTML.read_text(encoding="utf-8")
+
+    assert "导出 CSV" in html
+    assert "下载备份" in html
+    assert "/api/export.csv" in html
+    assert "/api/backup.json" in html

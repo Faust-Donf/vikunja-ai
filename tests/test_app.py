@@ -150,3 +150,32 @@ def test_weekly_report_uses_completed_and_planned_tasks(tmp_path, monkeypatch):
     assert "本周周报" in response.json()["report"]
     assert "本周完成项" in captured["prompt"]
     assert "下周高优先级待办" in captured["prompt"]
+
+
+def test_export_csv_and_backup_json_include_tasks(tmp_path, monkeypatch):
+    _, client = load_app(tmp_path, monkeypatch)
+    client.post(
+        "/api/tasks",
+        json={
+            "title": "导出测试任务",
+            "status": "待办",
+            "priority": "中",
+            "plan_date": "2026-06-07",
+            "project": "测试",
+            "tags": "导出",
+            "notes": "确认 CSV 和 JSON 备份",
+        },
+    )
+
+    csv_response = client.get("/api/export.csv")
+    assert csv_response.status_code == 200
+    assert csv_response.headers["content-type"].startswith("text/csv")
+    assert "导出测试任务" in csv_response.text
+    assert "completed_at" in csv_response.text.splitlines()[0]
+
+    backup_response = client.get("/api/backup.json")
+    assert backup_response.status_code == 200
+    payload = backup_response.json()
+    assert payload["schema"] == "personal-plan-table/v1"
+    assert payload["tasks"][0]["title"] == "导出测试任务"
+    assert "exported_at" in payload

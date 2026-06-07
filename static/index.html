@@ -533,6 +533,8 @@
           <h1>个人计划表<span class="sub">表格管理 + ChatAI</span></h1>
         </div>
         <div class="filters">
+          <button class="ghost" id="exportCsvBtn">导出 CSV</button>
+          <button class="ghost" id="backupJsonBtn">下载备份</button>
           <button class="secondary" id="aiGenerateBtn">AI 生成任务</button>
           <button class="primary" id="addBtn">新增一行</button>
         </div>
@@ -932,6 +934,14 @@
         });
         tasks.unshift(task);
         renderTasks();
+      });
+
+      $("exportCsvBtn").addEventListener("click", () => {
+        window.location.href = "/api/export.csv";
+      });
+
+      $("backupJsonBtn").addEventListener("click", () => {
+        window.location.href = "/api/backup.json";
       });
 
       $("quadrantBar").addEventListener("click", (event) => {

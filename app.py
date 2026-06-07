@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import io
 import json
 import os
 import re
@@ -11,7 +13,7 @@ from typing import Any
 
 import httpx
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 
@@ -81,6 +83,21 @@ class WeeklyReportResponse(BaseModel):
     report: str
 
 
+TASK_COLUMNS = [
+    "id",
+    "title",
+    "status",
+    "priority",
+    "plan_date",
+    "project",
+    "tags",
+    "notes",
+    "created_at",
+    "updated_at",
+    "completed_at",
+]
+
+
 def db() -> sqlite3.Connection:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
@@ -119,6 +136,19 @@ def startup() -> None:
 
 def row_to_task(row: sqlite3.Row) -> Task:
     return Task(**dict(row))
+
+
+def list_task_rows() -> list[sqlite3.Row]:
+    with db() as conn:
+        return conn.execute(
+            """
+            select * from tasks
+            order by
+                case status when '进行中' then 0 when '待办' then 1 when '阻塞' then 2 else 3 end,
+                coalesce(plan_date, '9999-12-31'),
+                id desc
+            """
+        ).fetchall()
 
 
 def now() -> str:
@@ -272,17 +302,37 @@ async def favicon() -> Response:
 
 @app.get("/api/tasks", response_model=list[Task])
 async def list_tasks() -> list[Task]:
-    with db() as conn:
-        rows = conn.execute(
-            """
-            select * from tasks
-            order by
-                case status when '进行中' then 0 when '待办' then 1 when '阻塞' then 2 else 3 end,
-                coalesce(plan_date, '9999-12-31'),
-                id desc
-            """
-        ).fetchall()
-    return [row_to_task(row) for row in rows]
+    return [row_to_task(row) for row in list_task_rows()]
+
+
+@app.get("/api/export.csv")
+async def export_csv() -> StreamingResponse:
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=TASK_COLUMNS)
+    writer.writeheader()
+    for row in list_task_rows():
+        writer.writerow({column: row[column] for column in TASK_COLUMNS})
+    buffer.seek(0)
+    filename = f"personal-plan-tasks-{date.today().isoformat()}.csv"
+    return StreamingResponse(
+        iter([buffer.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.get("/api/backup.json")
+async def backup_json() -> JSONResponse:
+    payload = {
+        "exported_at": now(),
+        "schema": "personal-plan-table/v1",
+        "tasks": [{column: row[column] for column in TASK_COLUMNS} for row in list_task_rows()],
+    }
+    filename = f"personal-plan-backup-{date.today().isoformat()}.json"
+    return JSONResponse(
+        payload,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @app.post("/api/tasks", response_model=Task)
