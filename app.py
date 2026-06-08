@@ -301,6 +301,32 @@ def similar_existing_title(title: str) -> str | None:
     return None
 
 
+def prompt_has_multiple_task_signals(prompt: str) -> bool:
+    text = prompt.strip()
+    if re.search(r"(^|\n)\s*(?:[-*]|\d+[.、])\s*\S+", text):
+        return True
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if len(lines) >= 3:
+        return True
+    if len(lines) == 2:
+        first, second = title_tokens(lines[0]), title_tokens(lines[1])
+        if first and second and (first in second or second in first):
+            return False
+        if SequenceMatcher(None, first, second).ratio() < 0.45:
+            return True
+    return bool(re.search(r"[；;]|(?:、[^，。；;]{2,}(?:、|和|及))", text))
+
+
+def relevance_score(prompt: str, task: GeneratedTask) -> float:
+    source = title_tokens(prompt)
+    target = title_tokens(f"{task.title}{task.notes}{task.tags}")
+    if not source or not target:
+        return 0
+    shared = sum(1 for char in set(source) if char in target)
+    coverage = shared / max(len(set(source)), 1)
+    return coverage + SequenceMatcher(None, source, target).ratio()
+
+
 def extract_json(content: str) -> dict[str, Any]:
     content = content.strip()
     if content.startswith("```"):
@@ -699,7 +725,12 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
   ]
 }}
 
-任务数量 3-10 个。不要生成与现有任务标题相同或高度相似的任务，重复项放进 skipped。
+任务数量规则：
+- 默认只生成 1 个任务。
+- 只有当用户明确列出多个事项、多个目标或多个步骤时，才生成多条任务。
+- 不要把一句话目标扩写成文档整理、资源确认、信息同步、进度梳理等用户没有明确说出的后续任务。
+- 任务标题必须贴近用户原话中的动作和对象。
+不要生成与现有任务标题相同或高度相似的任务，重复项放进 skipped。
 如果无法判断 ddl 或项目归属，不要编造；对应字段留空或 null，并在 needs_input 中写 plan_date 或 project。
 """
     content = await call_venus(
@@ -749,5 +780,7 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
         )
     if not tasks:
         raise HTTPException(502, "AI 没有生成可用任务")
+    if len(tasks) > 1 and not prompt_has_multiple_task_signals(req.prompt):
+        tasks = sorted(tasks, key=lambda task: relevance_score(req.prompt, task), reverse=True)[:1]
     skipped = list(dict.fromkeys(skipped))
     return GenerateResponse(summary=str(raw.get("summary") or ""), tasks=tasks[:10], skipped=skipped[:20])

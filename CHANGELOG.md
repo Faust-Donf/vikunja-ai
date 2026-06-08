@@ -31,3 +31,4 @@
 
 - Fixed AI assistant Markdown reply rendering for ordered lists and bold text.
 - Fixed the right-side AI assistant panel width and quadrant card title alignment.
+- Fixed AI task generation over-splitting single-sentence requests into speculative follow-up tasks.

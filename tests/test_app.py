@@ -200,6 +200,66 @@ def test_generate_filters_existing_tasks_and_preserves_input_requests(tmp_path, 
     assert body["tasks"][0]["needs_input"] == ["plan_date", "project"]
 
 
+def test_generate_keeps_single_sentence_request_to_one_task(tmp_path, monkeypatch):
+    app_module, client = load_app(tmp_path, monkeypatch)
+
+    async def fake_call_venus(messages, temperature=0.3):
+        assert "默认只生成 1 个任务" in messages[-1]["content"]
+        return """
+        {
+          "summary": "本周计划重点为今日内完成与敬炎对接CRP系统接口开发时间的相关工作",
+          "skipped": [],
+          "tasks": [
+            {
+              "title": "找敬炎对齐CRP系统接口的开发时间",
+              "status": "待办",
+              "priority": "高",
+              "plan_date": "2026-06-08",
+              "project": "",
+              "tags": "对接,CRP系统,接口开发",
+              "notes": "今日内完成与敬炎的沟通，明确CRP系统接口的开发时间安排",
+              "needs_input": ["project"]
+            },
+            {
+              "title": "整理CRP系统接口对接需求文档",
+              "status": "待办",
+              "priority": "中",
+              "plan_date": null,
+              "project": "",
+              "tags": "文档,CRP系统,接口开发",
+              "notes": "梳理CRP系统接口对接的相关需求",
+              "needs_input": ["plan_date", "project"]
+            },
+            {
+              "title": "确认CRP系统接口开发所需资源",
+              "status": "待办",
+              "priority": "中",
+              "plan_date": null,
+              "project": "",
+              "tags": "资源协调,CRP系统,接口开发",
+              "notes": "明确开发需要的人力、环境等资源是否到位",
+              "needs_input": ["plan_date", "project"]
+            }
+          ]
+        }
+        """
+
+    monkeypatch.setattr(app_module, "call_venus", fake_call_venus)
+    response = client.post(
+        "/api/generate",
+        json={
+            "prompt": "本周计划重点为今日内完成与敬炎对接CRP系统接口开发时间的相关工作\n找敬炎对齐CRP系统接口的开发时间",
+            "horizon": "本周",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [task["title"] for task in body["tasks"]] == ["找敬炎对齐CRP系统接口的开发时间"]
+    assert body["tasks"][0]["plan_date"] == "2026-06-08"
+    assert body["tasks"][0]["needs_input"] == ["project"]
+
+
 def test_weekly_report_uses_completed_and_planned_tasks(tmp_path, monkeypatch):
     app_module, client = load_app(tmp_path, monkeypatch)
     captured = {}
