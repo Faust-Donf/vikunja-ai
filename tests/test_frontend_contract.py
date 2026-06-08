@@ -46,6 +46,8 @@ def test_frontend_contains_generation_review_flow():
     assert "已跳过重复任务" in html
     assert "data-gen-field=\"project\"" in html
     assert "data-gen-field=\"plan_date\"" in html
+    assert "data-delete-generated" in html
+    assert "generatedTasks.splice(index, 1)" in html
     assert "还有任务缺少 DDL 或项目归属" in html
     assert "needs_input" in html
 

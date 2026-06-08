@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Added deletion for individual AI-generated task preview rows before appending them to the table.
+
 ## [0.1.0] - 2026-06-07
 
 ### Added

@@ -634,6 +634,12 @@
       .generated-row:last-child {
         border-bottom: 0;
       }
+      .generated-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+      }
       .generated-grid {
         display: grid;
         grid-template-columns: 1fr 150px 150px 96px;
@@ -659,6 +665,10 @@
         color: #a43f30;
         font-size: 12px;
         margin-top: 6px;
+      }
+      .generated-empty {
+        margin-top: 12px;
+        color: var(--muted);
       }
       @media (max-width: 860px) {
         .layout {
@@ -1416,6 +1426,54 @@
       $("aiGenerateBtn").addEventListener("click", () => $("generateDialog").showModal());
       $("closeGenerateBtn").addEventListener("click", () => $("generateDialog").close());
 
+      function renderGeneratedTasks(summary = "", skipped = []) {
+        $("generatedResult").innerHTML = `
+          ${summary ? `<div class="status" style="margin-top: 12px">${escapeHtml(summary)}</div>` : ""}
+          ${
+            skipped.length
+              ? `<div class="skipped"><strong>已跳过重复任务</strong><br>${skipped.map(escapeHtml).join("<br>")}</div>`
+              : ""
+          }
+          ${
+            generatedTasks.length
+              ? `<div class="generated">
+                  ${generatedTasks
+                    .map((task, index) => {
+                      const needs = task.needs_input || [];
+                      return `
+                        <div class="generated-row" data-generated-index="${index}">
+                          <div class="generated-head">
+                            <strong>${escapeHtml(task.title)}</strong>
+                            <button class="danger" data-delete-generated="${index}">删除</button>
+                          </div>
+                          <div class="status">${escapeHtml(task.project || "无项目")} · ${escapeHtml(task.priority)} · ${escapeHtml(task.plan_date || "无日期")} · ${escapeHtml(task.tags || "无标签")}</div>
+                          <div>${escapeHtml(task.notes || "")}</div>
+                          ${
+                            needs.length
+                              ? `<div class="needs-input">AI 不确定：${needs.map((field) => (field === "plan_date" ? "DDL" : field === "project" ? "项目归属" : field)).join("、")}，请补充后再追加。</div>`
+                              : ""
+                          }
+                          <div class="generated-grid">
+                            <input data-gen-field="project" data-gen-index="${index}" placeholder="项目" value="${escapeHtml(task.project || "")}" />
+                            <input type="date" data-gen-field="plan_date" data-gen-index="${index}" value="${escapeHtml(task.plan_date || "")}" />
+                            <select data-gen-field="priority" data-gen-index="${index}">
+                              ${["高", "中", "低"].map((v) => `<option ${task.priority === v ? "selected" : ""}>${v}</option>`).join("")}
+                            </select>
+                            <select data-gen-field="status" data-gen-index="${index}">
+                              ${["待办", "进行中", "阻塞"].map((v) => `<option ${task.status === v ? "selected" : ""}>${v}</option>`).join("")}
+                            </select>
+                          </div>
+                        </div>
+                      `;
+                    })
+                    .join("")}
+                </div>`
+              : `<div class="generated-empty">没有可追加的生成任务。</div>`
+          }
+        `;
+        $("appendGeneratedBtn").disabled = generatedTasks.length === 0;
+      }
+
       $("runGenerateBtn").addEventListener("click", async () => {
         const prompt = $("generatePrompt").value.trim();
         if (!prompt) {
@@ -1434,44 +1492,7 @@
           });
           generatedTasks = data.tasks || [];
           const skipped = data.skipped || [];
-          $("generatedResult").innerHTML = `
-            <div class="status" style="margin-top: 12px">${escapeHtml(data.summary || "")}</div>
-            ${
-              skipped.length
-                ? `<div class="skipped"><strong>已跳过重复任务</strong><br>${skipped.map(escapeHtml).join("<br>")}</div>`
-                : ""
-            }
-            <div class="generated">
-              ${generatedTasks
-                .map((task, index) => {
-                  const needs = task.needs_input || [];
-                  return `
-                    <div class="generated-row" data-generated-index="${index}">
-                      <strong>${escapeHtml(task.title)}</strong>
-                      <div class="status">${escapeHtml(task.project || "无项目")} · ${escapeHtml(task.priority)} · ${escapeHtml(task.plan_date || "无日期")} · ${escapeHtml(task.tags || "无标签")}</div>
-                      <div>${escapeHtml(task.notes || "")}</div>
-                      ${
-                        needs.length
-                          ? `<div class="needs-input">AI 不确定：${needs.map((field) => (field === "plan_date" ? "DDL" : field === "project" ? "项目归属" : field)).join("、")}，请补充后再追加。</div>`
-                          : ""
-                      }
-                      <div class="generated-grid">
-                        <input data-gen-field="project" data-gen-index="${index}" placeholder="项目" value="${escapeHtml(task.project || "")}" />
-                        <input type="date" data-gen-field="plan_date" data-gen-index="${index}" value="${escapeHtml(task.plan_date || "")}" />
-                        <select data-gen-field="priority" data-gen-index="${index}">
-                          ${["高", "中", "低"].map((v) => `<option ${task.priority === v ? "selected" : ""}>${v}</option>`).join("")}
-                        </select>
-                        <select data-gen-field="status" data-gen-index="${index}">
-                          ${["待办", "进行中", "阻塞"].map((v) => `<option ${task.status === v ? "selected" : ""}>${v}</option>`).join("")}
-                        </select>
-                      </div>
-                    </div>
-                  `;
-                })
-                .join("")}
-            </div>
-          `;
-          $("appendGeneratedBtn").disabled = generatedTasks.length === 0;
+          renderGeneratedTasks(data.summary || "", skipped);
           $("generateStatus").textContent = "预览已生成";
         } catch (err) {
           $("generateStatus").textContent = err.message;
@@ -1487,6 +1508,17 @@
         if (!field || Number.isNaN(index) || !generatedTasks[index]) return;
         generatedTasks[index][field] = event.target.value;
         generatedTasks[index].needs_input = (generatedTasks[index].needs_input || []).filter((item) => item !== field);
+      });
+
+      $("generatedResult").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-delete-generated]");
+        if (!button) return;
+        const index = Number(button.dataset.deleteGenerated);
+        if (Number.isNaN(index) || !generatedTasks[index]) return;
+        generatedTasks.splice(index, 1);
+        renderGeneratedTasks();
+        $("generateStatus").textContent = generatedTasks.length ? "已删除 1 条生成任务" : "生成任务已清空";
+        $("generateStatus").className = "status";
       });
 
       $("appendGeneratedBtn").addEventListener("click", async () => {
