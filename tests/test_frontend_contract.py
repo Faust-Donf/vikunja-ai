@@ -56,7 +56,9 @@ def test_frontend_contains_quadrant_layout_rules():
     html = HTML.read_text(encoding="utf-8")
 
     assert "quadrant-rule" in html
-    assert "高优先级 + 今天/逾期" in html
+    assert "task.plan_date <= addDays(todayString(), 3)" in html
+    assert "高优先级 + 3天内" in html
+    assert "非高优先级 + 3天内" in html
     assert "非高优先级 + 非紧急" in html
     assert "toolbar-main" in html
 
@@ -152,6 +154,7 @@ def test_frontend_contains_project_filter():
     assert 'const project = $("projectFilter").value' in html
     assert "(!project || task.project === project)" in html
     assert '$("projectFilter").value = ""' in html
+    assert 'if (field === "status" || field === "priority" || field === "plan_date") renderTasks();' in html
 
 
 def test_frontend_contains_reset_view_action():

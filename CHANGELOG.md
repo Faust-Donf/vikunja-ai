@@ -7,6 +7,7 @@
 - Added deletion for individual AI-generated task preview rows before appending them to the table.
 - Added a project filter for narrowing the task table to a single project.
 - Changed the task table to fit all columns without horizontal dragging and wrap long text inside textarea cells.
+- Fixed project-field typing losing focus and changed urgency to include tasks due within 3 days.
 
 ## [0.1.0] - 2026-06-07
 

@@ -1005,7 +1005,7 @@
       }
 
       function isUrgent(task) {
-        return task.plan_date && task.plan_date <= todayString();
+        return task.plan_date && task.plan_date <= addDays(todayString(), 3);
       }
 
       function isImportant(task) {
@@ -1146,7 +1146,7 @@
                     <span class="quadrant-action">${meta.hint}</span>
                   </div>
                   <div class="quadrant-count">${count} 条任务</div>
-                  <div class="quadrant-rule">${key === "do" ? "高优先级 + 今天/逾期" : key === "plan" ? "高优先级 + 非紧急" : key === "delegate" ? "非高优先级 + 今天/逾期" : "非高优先级 + 非紧急"}</div>
+                  <div class="quadrant-rule">${key === "do" ? "高优先级 + 3天内" : key === "plan" ? "高优先级 + 非紧急" : key === "delegate" ? "非高优先级 + 3天内" : "非高优先级 + 非紧急"}</div>
                 </span>
               </button>
             `;
@@ -1223,6 +1223,7 @@
         });
         const index = tasks.findIndex((item) => item.id === saved.id);
         if (index >= 0) tasks[index] = saved;
+        renderProjectFilterOptions();
       }
 
       function debounce(fn, wait = 500) {
@@ -1252,7 +1253,7 @@
         if (target.tagName === "TEXTAREA") autosizeTextareas(target.closest("tr"));
         setTableStatus("正在保存...");
         debouncedSave(task);
-        if (field === "status" || field === "priority" || field === "plan_date" || field === "project") renderTasks();
+        if (field === "status" || field === "priority" || field === "plan_date") renderTasks();
       });
 
       $("taskRows").addEventListener("click", async (event) => {
