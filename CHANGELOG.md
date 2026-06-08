@@ -6,6 +6,7 @@
 
 - Added deletion for individual AI-generated task preview rows before appending them to the table.
 - Added a project filter for narrowing the task table to a single project.
+- Changed the task table to use smaller text and wider fixed columns so row content does not visually collapse.
 
 ## [0.1.0] - 2026-06-07
 

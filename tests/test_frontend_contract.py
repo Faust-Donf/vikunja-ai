@@ -99,6 +99,18 @@ def test_frontend_contains_table_sorting_flow():
     assert "sort-button active" not in html
 
 
+def test_frontend_contains_readable_wide_table_layout():
+    html = HTML.read_text(encoding="utf-8")
+
+    assert "table-layout: fixed" in html
+    assert "min-width: 1780px" in html
+    assert ".project-cell" in html
+    assert ".tags-cell" in html
+    assert ".actions-cell" in html
+    assert "font-size: 13px" in html
+    assert "resize: none" in html
+
+
 def test_frontend_contains_bulk_task_actions():
     html = HTML.read_text(encoding="utf-8")
 

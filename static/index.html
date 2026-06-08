@@ -192,16 +192,18 @@
       }
       table {
         width: 100%;
+        table-layout: fixed;
         border-collapse: separate;
         border-spacing: 0;
-        min-width: 920px;
+        min-width: 1780px;
       }
       th,
       td {
         border-bottom: 1px solid var(--line);
-        padding: 8px;
+        padding: 8px 7px;
         text-align: left;
         vertical-align: top;
+        font-size: 13px;
       }
       th {
         position: sticky;
@@ -240,7 +242,8 @@
         border-radius: 5px;
         background: transparent;
         color: var(--ink);
-        padding: 6px;
+        padding: 5px;
+        font-size: 13px;
       }
       td input:focus,
       td select:focus,
@@ -250,8 +253,9 @@
         border-color: #9bb9b3;
       }
       td textarea {
-        resize: vertical;
-        min-height: 34px;
+        resize: none;
+        min-height: 52px;
+        line-height: 1.35;
       }
       tr.priority-high td:first-child {
         box-shadow: inset 4px 0 0 #d44b3e;
@@ -453,10 +457,31 @@
         color: var(--muted);
       }
       .title-cell {
-        min-width: 220px;
+        width: 330px;
+      }
+      .status-cell {
+        width: 96px;
+      }
+      .priority-cell {
+        width: 112px;
+      }
+      .date-cell {
+        width: 138px;
+      }
+      .quadrant-cell {
+        width: 130px;
+      }
+      .project-cell {
+        width: 190px;
+      }
+      .tags-cell {
+        width: 190px;
       }
       .notes-cell {
-        min-width: 260px;
+        width: 330px;
+      }
+      .actions-cell {
+        width: 122px;
       }
       .empty {
         padding: 42px;
@@ -768,14 +793,14 @@
                   <th class="select-cell"><input type="checkbox" id="selectVisible" title="选择当前可见任务" /></th>
                   <th class="id-cell"><button class="sort-button" data-sort-field="id">ID</button></th>
                   <th class="title-cell"><button class="sort-button" data-sort-field="title">任务</button></th>
-                  <th><button class="sort-button" data-sort-field="status">状态</button></th>
-                  <th><button class="sort-button" data-sort-field="priority">优先级</button></th>
-                  <th><button class="sort-button" data-sort-field="plan_date">计划日期</button></th>
-                  <th>四象限</th>
-                  <th><button class="sort-button" data-sort-field="project">项目</button></th>
-                  <th><button class="sort-button" data-sort-field="tags">标签</button></th>
+                  <th class="status-cell"><button class="sort-button" data-sort-field="status">状态</button></th>
+                  <th class="priority-cell"><button class="sort-button" data-sort-field="priority">优先级</button></th>
+                  <th class="date-cell"><button class="sort-button" data-sort-field="plan_date">计划日期</button></th>
+                  <th class="quadrant-cell">四象限</th>
+                  <th class="project-cell"><button class="sort-button" data-sort-field="project">项目</button></th>
+                  <th class="tags-cell"><button class="sort-button" data-sort-field="tags">标签</button></th>
                   <th class="notes-cell">备注 / 完成标准</th>
-                  <th>操作</th>
+                  <th class="actions-cell">操作</th>
                 </tr>
               </thead>
               <tbody id="taskRows"></tbody>
@@ -1133,23 +1158,23 @@
                 <td class="select-cell"><input type="checkbox" data-select-task="${task.id}" ${selectedIds.has(task.id) ? "checked" : ""} /></td>
                 <td class="id-cell">#${task.id}</td>
                 <td class="title-cell"><input data-field="title" value="${escapeHtml(task.title)}" /></td>
-                <td>
+                <td class="status-cell">
                   <select data-field="status">
                     ${["待办", "进行中", "阻塞", "完成"].map((v) => `<option ${task.status === v ? "selected" : ""}>${v}</option>`).join("")}
                   </select>
                 </td>
-                <td>
+                <td class="priority-cell">
                   <select data-field="priority">
                     ${["高", "中", "低"].map((v) => `<option ${task.priority === v ? "selected" : ""}>${v}</option>`).join("")}
                   </select>
                   <div class="priority-pill ${priorityPillClass(task.priority)}">${escapeHtml(task.priority)}优先级</div>
                 </td>
-                <td><input type="date" data-field="plan_date" value="${escapeHtml(task.plan_date || "")}" /></td>
-                <td><span class="quadrant-pill ${q.className}">${q.name}</span></td>
-                <td><input data-field="project" value="${escapeHtml(task.project)}" /></td>
-                <td><input data-field="tags" value="${escapeHtml(task.tags)}" /></td>
+                <td class="date-cell"><input type="date" data-field="plan_date" value="${escapeHtml(task.plan_date || "")}" /></td>
+                <td class="quadrant-cell"><span class="quadrant-pill ${q.className}">${q.name}</span></td>
+                <td class="project-cell"><input data-field="project" value="${escapeHtml(task.project)}" /></td>
+                <td class="tags-cell"><input data-field="tags" value="${escapeHtml(task.tags)}" /></td>
                 <td class="notes-cell"><textarea data-field="notes">${escapeHtml(task.notes)}</textarea></td>
-                <td>
+                <td class="actions-cell">
                   <div class="row-actions">
                     ${
                       task.status === "完成"
