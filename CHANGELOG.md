@@ -6,6 +6,7 @@
 
 - Added deletion for individual AI-generated task preview rows before appending them to the table.
 - Added a project filter for narrowing the task table to a single project.
+- Added a one-click weekly plan generator with stable project-grouped output.
 - Changed the task table to fit all columns without horizontal dragging and wrap long text inside textarea cells.
 - Fixed project-field typing losing focus and changed urgency to include tasks due within 3 days.
 

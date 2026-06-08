@@ -820,6 +820,7 @@
             <div class="status">会读取当前任务表，帮你做计划、复盘和优先级判断。</div>
           </div>
           <div class="quick">
+            <button class="ghost" id="weeklyPlanBtn">生成本周计划</button>
             <button class="ghost" id="weeklyReportBtn">生成周报</button>
             <button class="ghost" data-prompt="帮我安排今天最该做的 3 件事">今日重点</button>
             <button class="ghost" data-prompt="根据当前任务表，帮我做一次周复盘">周复盘</button>
@@ -1473,7 +1474,24 @@
         }
       }
 
+      async function generateWeeklyPlan() {
+        appendMessage("user", "请按项目归类生成本周计划");
+        $("weeklyPlanBtn").disabled = true;
+        $("chatStatus").textContent = "正在生成本周计划...";
+        try {
+          const data = await jsonFetch("/api/weekly-plan", { method: "POST", body: "{}" });
+          appendMessage("assistant", data.plan);
+          $("chatStatus").textContent = "";
+        } catch (err) {
+          $("chatStatus").textContent = err.message;
+          $("chatStatus").className = "status error";
+        } finally {
+          $("weeklyPlanBtn").disabled = false;
+        }
+      }
+
       $("sendBtn").addEventListener("click", () => sendChat($("chatInput").value));
+      $("weeklyPlanBtn").addEventListener("click", generateWeeklyPlan);
       $("weeklyReportBtn").addEventListener("click", generateWeeklyReport);
       $("chatInput").addEventListener("keydown", (event) => {
         if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) sendChat($("chatInput").value);

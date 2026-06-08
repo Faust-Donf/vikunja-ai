@@ -112,6 +112,10 @@ class WeeklyReportResponse(BaseModel):
     report: str
 
 
+class WeeklyPlanResponse(BaseModel):
+    plan: str
+
+
 class ImportBackupRequest(BaseModel):
     tasks: list[dict[str, Any]]
 
@@ -730,6 +734,73 @@ async def weekly_report() -> WeeklyReportResponse:
         {"role": "user", "content": prompt},
     ]
     return WeeklyReportResponse(report=await call_venus(messages, temperature=0.35))
+
+
+@app.post("/api/weekly-plan", response_model=WeeklyPlanResponse, dependencies=[Depends(require_access)])
+async def weekly_plan() -> WeeklyPlanResponse:
+    start, end, _, _ = week_range()
+    start_s, end_s = start.isoformat(), end.isoformat()
+    with db() as conn:
+        planned = conn.execute(
+            """
+            select * from tasks
+            where status != '完成'
+              and (
+                plan_date between ? and ?
+                or priority = '高'
+                or status in ('进行中', '阻塞')
+              )
+            order by
+              coalesce(nullif(project, ''), '未归类'),
+              case priority when '高' then 0 when '中' then 1 else 2 end,
+              coalesce(plan_date, '9999-12-31'),
+              id
+            limit 80
+            """,
+            (start_s, end_s),
+        ).fetchall()
+    prompt = f"""
+请根据下面的个人任务表数据，生成一份中文本周计划。
+
+本周范围：{start_s} 至 {end_s}
+
+本周计划候选任务：
+{row_lines(planned, "暂时没有本周计划候选任务。")}
+
+输出格式必须每次保持一致，严格使用下面结构：
+
+# 本周计划（{start_s} - {end_s}）
+
+## 总览
+- 本周目标：
+- 优先级原则：
+
+## 按项目计划
+### 项目：<项目名或未归类>
+| 优先级 | 计划日期 | 状态 | 任务 | 完成标准/备注 |
+| --- | --- | --- | --- | --- |
+| <高/中/低> | <YYYY-MM-DD 或 -> | <状态> | <任务标题> | <备注，没有则 -> |
+
+## 风险与阻塞
+- <只列任务表中状态为阻塞或备注里明确有风险的信息；没有就写“暂无明确风险”。>
+
+## 本周执行顺序
+1. <按重要性和紧急性排序，给出 3-7 条>
+
+规则：
+1. 必须按 project 归类；project 为空时归到“未归类”。
+2. 只能使用任务表已有任务，不要编造新任务、日期、负责人或背景。
+3. 高优先级、进行中、阻塞、本周有计划日期的任务优先进入计划。
+4. 内容要简洁，适合直接复制到周计划里。
+"""
+    messages = [
+        {
+            "role": "system",
+            "content": "你是中文个人计划管理助理，输出稳定、结构化、按项目归类的周计划。",
+        },
+        {"role": "user", "content": prompt},
+    ]
+    return WeeklyPlanResponse(plan=await call_venus(messages, temperature=0.2))
 
 
 @app.post("/api/generate", response_model=GenerateResponse, dependencies=[Depends(require_access)])

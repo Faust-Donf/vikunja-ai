@@ -343,6 +343,42 @@ def test_weekly_report_uses_completed_and_planned_tasks(tmp_path, monkeypatch):
     assert "下周高优先级待办" in captured["prompt"]
 
 
+def test_weekly_plan_uses_stable_project_grouped_prompt(tmp_path, monkeypatch):
+    app_module, client = load_app(tmp_path, monkeypatch)
+    captured = {}
+
+    async def fake_call_venus(messages, temperature=0.3):
+        captured["prompt"] = messages[-1]["content"]
+        captured["temperature"] = temperature
+        return "# 本周计划\n\n## 按项目计划\n### 项目：测试"
+
+    monkeypatch.setattr(app_module, "call_venus", fake_call_venus)
+
+    client.post(
+        "/api/tasks",
+        json={
+            "title": "本周项目任务",
+            "status": "待办",
+            "priority": "高",
+            "plan_date": "2026-06-08",
+            "project": "测试项目",
+            "tags": "",
+            "notes": "明确完成标准",
+        },
+    )
+
+    response = client.post("/api/weekly-plan", json={})
+
+    assert response.status_code == 200
+    assert "本周计划" in response.json()["plan"]
+    assert "输出格式必须每次保持一致" in captured["prompt"]
+    assert "## 按项目计划" in captured["prompt"]
+    assert "### 项目：<项目名或未归类>" in captured["prompt"]
+    assert "必须按 project 归类" in captured["prompt"]
+    assert "本周项目任务" in captured["prompt"]
+    assert captured["temperature"] == 0.2
+
+
 def test_export_csv_and_backup_json_include_tasks(tmp_path, monkeypatch):
     _, client = load_app(tmp_path, monkeypatch)
     client.post(

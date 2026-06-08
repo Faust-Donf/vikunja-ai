@@ -18,7 +18,11 @@ def test_frontend_contains_ai_assistant_and_markdown_renderer():
     assert "表格管理 + ChatAI" not in html
     assert "function renderMarkdown" in html
     assert "node.innerHTML = renderMarkdown(content)" in html
+    assert "生成本周计划" in html
     assert "生成周报" in html
+    assert "/api/weekly-plan" in html
+    assert "function generateWeeklyPlan" in html
+    assert 'weeklyPlanBtn").addEventListener("click", generateWeeklyPlan)' in html
 
 
 def test_markdown_renderer_compiles_ai_reply_sample():
