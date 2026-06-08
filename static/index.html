@@ -187,7 +187,8 @@
         min-width: 220px;
       }
       .table-wrap {
-        overflow: auto;
+        overflow-y: auto;
+        overflow-x: hidden;
         max-height: calc(100vh - 148px);
       }
       table {
@@ -195,7 +196,7 @@
         table-layout: fixed;
         border-collapse: separate;
         border-spacing: 0;
-        min-width: 1780px;
+        min-width: 0;
       }
       th,
       td {
@@ -238,12 +239,14 @@
       td select,
       td textarea {
         width: 100%;
+        min-width: 0;
         border: 1px solid transparent;
         border-radius: 5px;
         background: transparent;
         color: var(--ink);
         padding: 5px;
         font-size: 13px;
+        line-height: 1.35;
       }
       td input:focus,
       td select:focus,
@@ -256,6 +259,8 @@
         resize: none;
         min-height: 52px;
         line-height: 1.35;
+        overflow: hidden;
+        overflow-wrap: anywhere;
       }
       tr.priority-high td:first-child {
         box-shadow: inset 4px 0 0 #d44b3e;
@@ -453,35 +458,35 @@
         text-overflow: ellipsis;
       }
       .id-cell {
-        width: 48px;
+        width: 42px;
         color: var(--muted);
       }
       .title-cell {
-        width: 330px;
+        width: 26%;
       }
       .status-cell {
-        width: 96px;
+        width: 76px;
       }
       .priority-cell {
-        width: 112px;
+        width: 92px;
       }
       .date-cell {
-        width: 138px;
+        width: 118px;
       }
       .quadrant-cell {
-        width: 130px;
+        width: 106px;
       }
       .project-cell {
-        width: 190px;
+        width: 13%;
       }
       .tags-cell {
-        width: 190px;
+        width: 16%;
       }
       .notes-cell {
-        width: 330px;
+        width: 20%;
       }
       .actions-cell {
-        width: 122px;
+        width: 96px;
       }
       .empty {
         padding: 42px;
@@ -1120,6 +1125,13 @@
         $("selectVisible").indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < visible.length;
       }
 
+      function autosizeTextareas(root = document) {
+        root.querySelectorAll("td textarea").forEach((textarea) => {
+          textarea.style.height = "auto";
+          textarea.style.height = `${Math.max(textarea.scrollHeight, 52)}px`;
+        });
+      }
+
       function renderQuadrants() {
         const activeTasks = tasks.filter((task) => task.status !== "完成");
         $("quadrantBar").innerHTML = Object.entries(quadrantMeta)
@@ -1157,7 +1169,7 @@
               <tr data-id="${task.id}" class="${priorityClass(task.priority)} ${task.status === "完成" ? "done-row" : ""}">
                 <td class="select-cell"><input type="checkbox" data-select-task="${task.id}" ${selectedIds.has(task.id) ? "checked" : ""} /></td>
                 <td class="id-cell">#${task.id}</td>
-                <td class="title-cell"><input data-field="title" value="${escapeHtml(task.title)}" /></td>
+                <td class="title-cell"><textarea data-field="title">${escapeHtml(task.title)}</textarea></td>
                 <td class="status-cell">
                   <select data-field="status">
                     ${["待办", "进行中", "阻塞", "完成"].map((v) => `<option ${task.status === v ? "selected" : ""}>${v}</option>`).join("")}
@@ -1171,8 +1183,8 @@
                 </td>
                 <td class="date-cell"><input type="date" data-field="plan_date" value="${escapeHtml(task.plan_date || "")}" /></td>
                 <td class="quadrant-cell"><span class="quadrant-pill ${q.className}">${q.name}</span></td>
-                <td class="project-cell"><input data-field="project" value="${escapeHtml(task.project)}" /></td>
-                <td class="tags-cell"><input data-field="tags" value="${escapeHtml(task.tags)}" /></td>
+                <td class="project-cell"><textarea data-field="project">${escapeHtml(task.project)}</textarea></td>
+                <td class="tags-cell"><textarea data-field="tags">${escapeHtml(task.tags)}</textarea></td>
                 <td class="notes-cell"><textarea data-field="notes">${escapeHtml(task.notes)}</textarea></td>
                 <td class="actions-cell">
                   <div class="row-actions">
@@ -1189,6 +1201,7 @@
             },
           )
           .join("");
+        autosizeTextareas($("taskRows"));
         setTableStatus(`${visible.length} / ${tasks.length} 条任务`);
       }
 
@@ -1236,6 +1249,7 @@
         const id = Number(target.closest("tr").dataset.id);
         const task = tasks.find((item) => item.id === id);
         task[field] = target.value;
+        if (target.tagName === "TEXTAREA") autosizeTextareas(target.closest("tr"));
         setTableStatus("正在保存...");
         debouncedSave(task);
         if (field === "status" || field === "priority" || field === "plan_date" || field === "project") renderTasks();

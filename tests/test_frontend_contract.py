@@ -99,16 +99,21 @@ def test_frontend_contains_table_sorting_flow():
     assert "sort-button active" not in html
 
 
-def test_frontend_contains_readable_wide_table_layout():
+def test_frontend_contains_wrapping_full_width_table_layout():
     html = HTML.read_text(encoding="utf-8")
 
     assert "table-layout: fixed" in html
-    assert "min-width: 1780px" in html
+    assert "overflow-x: hidden" in html
+    assert "min-width: 0" in html
     assert ".project-cell" in html
     assert ".tags-cell" in html
     assert ".actions-cell" in html
     assert "font-size: 13px" in html
     assert "resize: none" in html
+    assert "overflow-wrap: anywhere" in html
+    assert '<td class="title-cell"><textarea data-field="title">' in html
+    assert '<td class="project-cell"><textarea data-field="project">' in html
+    assert '<td class="tags-cell"><textarea data-field="tags">' in html
 
 
 def test_frontend_contains_bulk_task_actions():
