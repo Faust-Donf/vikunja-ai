@@ -260,6 +260,45 @@ def test_generate_keeps_single_sentence_request_to_one_task(tmp_path, monkeypatc
     assert body["tasks"][0]["needs_input"] == ["project"]
 
 
+def test_generate_infers_project_and_fuzzy_deadline_from_prompt(tmp_path, monkeypatch):
+    app_module, client = load_app(tmp_path, monkeypatch)
+
+    async def fake_call_venus(messages, temperature=0.3):
+        return """
+        {
+          "summary": "中长期年度预测计划",
+          "skipped": [],
+          "tasks": [
+            {
+              "title": "中长期年度预测",
+              "status": "待办",
+              "priority": "高",
+              "plan_date": null,
+              "project": "",
+              "tags": "年度预测,年底预测系统",
+              "notes": "准备年底预测系统、一部年度收入和飞哥聊天记录等数据",
+              "needs_input": ["plan_date", "project"]
+            }
+          ]
+        }
+        """
+
+    monkeypatch.setattr(app_module, "call_venus", fake_call_venus)
+    response = client.post(
+        "/api/generate",
+        json={
+            "prompt": "中长期年度预测，预估6月下旬到6月底左右开始，\n以下是该任务所需的数据、系统\n年底预测系统：https://cvmforecast.no1.woa.com/\n一部年度收入，飞哥聊天记录\n中长期年度预测，ddl：6月下旬到6月底左右提前一周完成",
+            "horizon": "本周",
+        },
+    )
+
+    assert response.status_code == 200
+    task = response.json()["tasks"][0]
+    assert task["project"] == "中长期年度预测"
+    assert task["plan_date"] == "2026-06-23"
+    assert task["needs_input"] == []
+
+
 def test_weekly_report_uses_completed_and_planned_tasks(tmp_path, monkeypatch):
     app_module, client = load_app(tmp_path, monkeypatch)
     captured = {}

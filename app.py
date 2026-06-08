@@ -233,6 +233,46 @@ def validate_date(value: str | None) -> str | None:
         return None
 
 
+def month_end(year: int, month: int) -> date:
+    if month == 12:
+        return date(year, 12, 31)
+    return date(year, month + 1, 1) - timedelta(days=1)
+
+
+def infer_plan_date_from_prompt(prompt: str, today: date | None = None) -> str | None:
+    today = today or date.today()
+    text = prompt.strip()
+    match = re.search(r"(\d{1,2})\s*月底", text)
+    if not match:
+        return None
+    month = int(match.group(1))
+    if not 1 <= month <= 12:
+        return None
+    year = today.year if month >= today.month else today.year + 1
+    target = month_end(year, month)
+    if re.search(r"提前\s*(?:一|1)\s*周完成", text):
+        target -= timedelta(days=7)
+    return target.isoformat()
+
+
+def infer_project_from_prompt(prompt: str) -> str:
+    lines = [line.strip() for line in prompt.splitlines() if line.strip()]
+    if not lines:
+        return ""
+    for line in lines:
+        match = re.search(r"(?:项目|任务|计划)[:：]\s*([^，,。；;\n]+)", line)
+        if match:
+            return match.group(1).strip()[:30]
+    first = re.split(r"[，,。；;：:]", lines[0], maxsplit=1)[0].strip()
+    if (
+        2 <= len(first) <= 30
+        and not first.startswith(("http://", "https://"))
+        and re.search(r"(项目|系统|预测|平台|产品|版本|专项|计划)$", first)
+    ):
+        return first
+    return ""
+
+
 def tasks_context(limit: int = 80) -> str:
     with db() as conn:
         rows = conn.execute(
@@ -748,6 +788,8 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
         raise HTTPException(502, f"AI 返回格式不可解析：{exc}") from exc
     tasks = []
     skipped = [str(item) for item in raw.get("skipped", []) if str(item).strip()]
+    inferred_project = infer_project_from_prompt(req.prompt)
+    inferred_plan_date = infer_plan_date_from_prompt(req.prompt)
     for item in raw.get("tasks", []):
         title = str(item.get("title") or "").strip()
         if not title:
@@ -762,20 +804,27 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
         status = str(item.get("status") or "待办")
         if status not in VALID_STATUSES:
             status = "待办"
+        plan_date = validate_date(item.get("plan_date")) or inferred_plan_date
+        project = str(item.get("project") or "").strip() or inferred_project
+        needs_input = [
+            str(field)
+            for field in item.get("needs_input", [])
+            if str(field) in {"plan_date", "project", "priority", "notes"}
+        ]
+        if plan_date:
+            needs_input = [field for field in needs_input if field != "plan_date"]
+        if project:
+            needs_input = [field for field in needs_input if field != "project"]
         tasks.append(
             GeneratedTask(
                 title=title[:250],
                 status=status,
                 priority=priority,
-                plan_date=validate_date(item.get("plan_date")),
-                project=str(item.get("project") or ""),
+                plan_date=plan_date,
+                project=project,
                 tags=str(item.get("tags") or ""),
                 notes=str(item.get("notes") or ""),
-                needs_input=[
-                    str(field)
-                    for field in item.get("needs_input", [])
-                    if str(field) in {"plan_date", "project", "priority", "notes"}
-                ],
+                needs_input=needs_input,
             )
         )
     if not tasks:
