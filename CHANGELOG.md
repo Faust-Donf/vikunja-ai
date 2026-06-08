@@ -8,6 +8,7 @@
 - Added a project filter for narrowing the task table to a single project.
 - Added a one-click weekly plan generator with stable project-grouped output.
 - Changed the task table to fit all columns without horizontal dragging and wrap long text inside textarea cells.
+- Changed weekly plan generation from table output to group-message-style text by project.
 - Fixed project-field typing losing focus and changed urgency to include tasks due within 3 days.
 
 ## [0.1.0] - 2026-06-07

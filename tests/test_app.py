@@ -350,7 +350,7 @@ def test_weekly_plan_uses_stable_project_grouped_prompt(tmp_path, monkeypatch):
     async def fake_call_venus(messages, temperature=0.3):
         captured["prompt"] = messages[-1]["content"]
         captured["temperature"] = temperature
-        return "# 本周计划\n\n## 按项目计划\n### 项目：测试"
+        return "本周计划\n\n【测试项目】\n- 本周项目任务：明确完成标准"
 
     monkeypatch.setattr(app_module, "call_venus", fake_call_venus)
 
@@ -372,9 +372,12 @@ def test_weekly_plan_uses_stable_project_grouped_prompt(tmp_path, monkeypatch):
     assert response.status_code == 200
     assert "本周计划" in response.json()["plan"]
     assert "输出格式必须每次保持一致" in captured["prompt"]
-    assert "## 按项目计划" in captured["prompt"]
-    assert "### 项目：<项目名或未归类>" in captured["prompt"]
+    assert "按项目安排：" in captured["prompt"]
+    assert "【<项目名或未归类>】" in captured["prompt"]
     assert "必须按 project 归类" in captured["prompt"]
+    assert "不要使用 Markdown 表格" in captured["prompt"]
+    assert "像发群里的文字汇总" in captured["prompt"]
+    assert "| 优先级 |" not in captured["prompt"]
     assert "本周项目任务" in captured["prompt"]
     assert captured["temperature"] == 0.2
 
