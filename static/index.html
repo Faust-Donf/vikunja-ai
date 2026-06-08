@@ -742,6 +742,9 @@
                 <option value="next7">未来 7 天</option>
                 <option value="none">无日期</option>
               </select>
+              <select id="projectFilter">
+                <option value="">全部项目</option>
+              </select>
               <select id="archiveFilter">
                 <option value="active">未归档</option>
                 <option value="done">已归档</option>
@@ -1033,11 +1036,24 @@
         return true;
       }
 
+      function renderProjectFilterOptions() {
+        const current = $("projectFilter").value;
+        const projects = [...new Set(tasks.map((task) => task.project.trim()).filter(Boolean))].sort((a, b) =>
+          a.localeCompare(b, "zh-CN"),
+        );
+        $("projectFilter").innerHTML = `
+          <option value="">全部项目</option>
+          ${projects.map((project) => `<option value="${escapeHtml(project)}">${escapeHtml(project)}</option>`).join("")}
+        `;
+        $("projectFilter").value = projects.includes(current) ? current : "";
+      }
+
       function filteredTasks() {
         const q = $("search").value.trim().toLowerCase();
         const status = $("statusFilter").value;
         const priority = $("priorityFilter").value;
         const dateFilter = $("dateFilter").value;
+        const project = $("projectFilter").value;
         const archive = $("archiveFilter").value;
         const rows = tasks.filter((task) => {
           const hay = `${task.title} ${task.project} ${task.tags} ${task.notes}`.toLowerCase();
@@ -1048,6 +1064,7 @@
             (!q || hay.includes(q)) &&
             (!status || task.status === status) &&
             (!priority || task.priority === priority) &&
+            (!project || task.project === project) &&
             dateMatchesFilter(task, dateFilter) &&
             (!activeQuadrant || quadrantKey(task) === activeQuadrant)
           );
@@ -1101,6 +1118,7 @@
       }
 
       function renderTasks() {
+        renderProjectFilterOptions();
         const visible = filteredTasks();
         renderQuadrants();
         renderSortHeaders();
@@ -1195,7 +1213,7 @@
         task[field] = target.value;
         setTableStatus("正在保存...");
         debouncedSave(task);
-        if (field === "status" || field === "priority" || field === "plan_date") renderTasks();
+        if (field === "status" || field === "priority" || field === "plan_date" || field === "project") renderTasks();
       });
 
       $("taskRows").addEventListener("click", async (event) => {
@@ -1311,6 +1329,7 @@
         $("statusFilter").value = "";
         $("priorityFilter").value = "";
         $("dateFilter").value = "";
+        $("projectFilter").value = "";
         $("archiveFilter").value = "active";
         activeQuadrant = "";
         sortState = { field: "", direction: "asc" };
@@ -1360,7 +1379,7 @@
         }
       });
 
-      ["search", "statusFilter", "priorityFilter", "dateFilter", "archiveFilter"].forEach((id) =>
+      ["search", "statusFilter", "priorityFilter", "dateFilter", "projectFilter", "archiveFilter"].forEach((id) =>
         $(id).addEventListener("input", renderTasks),
       );
 

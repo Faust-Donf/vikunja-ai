@@ -126,6 +126,17 @@ def test_frontend_contains_plan_date_quick_filters():
     assert "planDate >= startOfWeek(today)" in html
 
 
+def test_frontend_contains_project_filter():
+    html = HTML.read_text(encoding="utf-8")
+
+    assert 'id="projectFilter"' in html
+    assert "全部项目" in html
+    assert "function renderProjectFilterOptions" in html
+    assert 'const project = $("projectFilter").value' in html
+    assert "(!project || task.project === project)" in html
+    assert '$("projectFilter").value = ""' in html
+
+
 def test_frontend_contains_reset_view_action():
     html = HTML.read_text(encoding="utf-8")
 
