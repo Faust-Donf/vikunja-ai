@@ -44,3 +44,9 @@
 - Fixed the right-side AI assistant panel width and quadrant card title alignment.
 - Fixed AI task generation over-splitting single-sentence requests into speculative follow-up tasks.
 - Fixed AI task generation missing project and fuzzy Chinese deadline fields when they are present in the prompt.
+
+## [Unreleased]
+
+### Fixed
+
+- Fixed AI task generation not parsing Chinese natural-language time expressions like "下周前三" (next week, first 3 days), "本周前N" (this week, first N days), and relative dates like "今天/明天/后天" (today/tomorrow/day after tomorrow).

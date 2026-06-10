@@ -246,6 +246,53 @@ def month_end(year: int, month: int) -> date:
 def infer_plan_date_from_prompt(prompt: str, today: date | None = None) -> str | None:
     today = today or date.today()
     text = prompt.strip()
+
+    # 中文数字到阿拉伯数字的映射
+    CN_NUM_MAP = {
+        "一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5,
+        "六": 6, "七": 7, "八": 8, "九": 9, "十": 10,
+    }
+
+    def _parse_cn_num(s: str) -> int | None:
+        """解析中文数字或阿拉伯数字，返回 int 或 None"""
+        if s.isdigit():
+            return int(s)
+        return CN_NUM_MAP.get(s)
+
+    # "下周前N天" / "下周前N" → 下周一+(N-1)天（下周一为第1天）
+    match = re.search(r"下周\s*前\s*(\d+|[一二三四五六七八九十两]+)", text)
+    if match:
+        days = _parse_cn_num(match.group(1))
+        if days is not None:
+            next_week_start = today + timedelta(days=(7 - today.weekday()))
+            return (next_week_start + timedelta(days=days - 1)).isoformat()
+
+    # "下周X" → 下周特定星期几（需排除"下周前"已经被上面匹配的情况）
+    WEEKDAY_MAP = {
+        "一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "日": 6, "天": 6,
+    }
+    match = re.search(r"下周(?!\s*前)\s*([一二三四五六日天])", text)
+    if match:
+        target_weekday = WEEKDAY_MAP.get(match.group(1))
+        if target_weekday is not None:
+            next_week_start = today + timedelta(days=(7 - today.weekday()))
+            return (next_week_start + timedelta(days=target_weekday)).isoformat()
+
+    # "本周前N天" / "本周前N"
+    match = re.search(r"本周\s*前\s*(\d+|[一二三四五六七八九十两]+)", text)
+    if match:
+        days = _parse_cn_num(match.group(1))
+        if days is not None:
+            this_week_start = today - timedelta(days=today.weekday())
+            return (this_week_start + timedelta(days=days - 1)).isoformat()
+
+    # "今天" / "明天" / "后天"
+    match = re.search(r"(今天|明天|后天)", text)
+    if match:
+        offset = {"今天": 0, "明天": 1, "后天": 2}
+        return (today + timedelta(days=offset[match.group(1)])).isoformat()
+
+    # "X月底"
     match = re.search(r"(\d{1,2})\s*月底", text)
     if not match:
         return None
