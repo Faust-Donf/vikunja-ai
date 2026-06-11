@@ -312,6 +312,24 @@ def infer_plan_date_from_prompt(prompt: str, today: date | None = None) -> str |
         offset = {"今天": 0, "明天": 1, "后天": 2}
         return (today + timedelta(days=offset[match.group(1)])).isoformat()
 
+    # "X月上旬/中旬/下旬"、"X月初/中/底/末"
+    match = re.search(r"(\d{1,2})\s*月\s*(上旬|中旬|下旬|月初|初|月中|中|月底|月末|底|末)", text)
+    if match:
+        month = int(match.group(1))
+        if not 1 <= month <= 12:
+            return None
+        year = today.year if month >= today.month else today.year + 1
+        period = match.group(2)
+        if period in {"上旬", "月初", "初"}:
+            target = date(year, month, 5)
+        elif period in {"中旬", "月中", "中"}:
+            target = date(year, month, 15)
+        else:
+            target = month_end(year, month)
+        if re.search(r"提前\s*(?:一|1)\s*周完成", text):
+            target -= timedelta(days=7)
+        return target.isoformat()
+
     # "X月底"
     match = re.search(r"(\d{1,2})\s*月底", text)
     if not match:

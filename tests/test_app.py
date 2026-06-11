@@ -280,6 +280,15 @@ def test_generate_keeps_single_sentence_request_to_one_task(tmp_path, monkeypatc
     assert body["tasks"][0]["needs_input"] == ["project"]
 
 
+def test_infer_plan_date_supports_month_periods(tmp_path, monkeypatch):
+    app_module, _ = load_app(tmp_path, monkeypatch)
+    today = app_module.date(2026, 6, 11)
+
+    assert app_module.infer_plan_date_from_prompt("订到7月中", today=today) == "2026-07-15"
+    assert app_module.infer_plan_date_from_prompt("7月中旬完成", today=today) == "2026-07-15"
+    assert app_module.infer_plan_date_from_prompt("6月下旬到6月底左右提前一周完成", today=today) == "2026-06-23"
+
+
 def test_generate_infers_project_and_fuzzy_deadline_from_prompt(tmp_path, monkeypatch):
     app_module, client = load_app(tmp_path, monkeypatch)
 
