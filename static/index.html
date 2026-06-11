@@ -1578,7 +1578,10 @@
       $("weeklyPlanBtn").addEventListener("click", generateWeeklyPlan);
       $("weeklyReportBtn").addEventListener("click", generateWeeklyReport);
       $("chatInput").addEventListener("keydown", (event) => {
-        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) sendChat($("chatInput").value);
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          sendChat($("chatInput").value);
+        }
       });
       document.querySelectorAll("[data-prompt]").forEach((button) => {
         button.addEventListener("click", () => sendChat(button.dataset.prompt));

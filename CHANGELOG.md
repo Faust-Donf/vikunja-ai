@@ -57,3 +57,4 @@
 - Fixed AI task generation not parsing Chinese natural-language time expressions like "下周前三" (next week, first 3 days), "本周前N" (this week, first N days), and relative dates like "今天/明天/后天" (today/tomorrow/day after tomorrow).
 - Fixed AI task generation not inferring deadlines from month-period expressions like "7月中" and "7月中旬".
 - Fixed AI assistant Markdown rendering for tables and blockquotes.
+- Changed AI assistant input so Enter sends messages and Shift+Enter inserts a newline.

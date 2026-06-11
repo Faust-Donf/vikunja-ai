@@ -25,6 +25,15 @@ def test_frontend_contains_ai_assistant_and_markdown_renderer():
     assert 'weeklyPlanBtn").addEventListener("click", generateWeeklyPlan)' in html
 
 
+def test_chat_input_enter_sends_and_shift_enter_keeps_newline():
+    html = HTML.read_text(encoding="utf-8")
+
+    assert 'event.key === "Enter" && !event.shiftKey' in html
+    assert "event.preventDefault()" in html
+    assert 'sendChat($("chatInput").value)' in html
+    assert "event.metaKey || event.ctrlKey" not in html
+
+
 def test_markdown_renderer_compiles_ai_reply_sample():
     if shutil.which("node") is None:
         pytest.skip("node is required to execute the frontend markdown renderer")
