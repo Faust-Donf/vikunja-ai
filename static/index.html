@@ -587,6 +587,33 @@
         text-decoration: none;
         border-bottom: 1px solid rgba(20, 107, 99, 0.3);
       }
+      .markdown table {
+        width: 100%;
+        table-layout: auto;
+        border-collapse: collapse;
+        margin: 8px 0;
+        font-size: 12px;
+      }
+      .markdown th,
+      .markdown td {
+        border: 1px solid var(--line);
+        padding: 6px 8px;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+      }
+      .markdown th {
+        position: static;
+        background: var(--soft);
+        color: #4c5967;
+        font-weight: 750;
+      }
+      .markdown blockquote {
+        margin: 8px 0;
+        padding: 6px 10px;
+        border-left: 3px solid var(--line);
+        color: #4e5c68;
+        background: #f7f9fb;
+      }
       .composer {
         border-top: 1px solid var(--line);
         padding: 12px;
@@ -941,13 +968,36 @@
             .replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
           return safe.replace(/@@CODE_(\d+)@@/g, (_, index) => codeSpans[Number(index)] || "");
         };
-        for (const line of lines) {
+        const isTableRow = (line) => /^\s*\|.*\|\s*$/.test(line);
+        const isTableSeparator = (line) => /^\s*\|?(\s*:?-{3,}:?\s*\|)+\s*:?-{3,}:?\s*\|?\s*$/.test(line);
+        const splitTableRow = (line) => line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+        for (let i = 0; i < lines.length; i += 1) {
+          const line = lines[i];
           const trimmed = line.trim();
           if (!trimmed) {
             closeList();
             continue;
           }
-          if (trimmed.startsWith("### ")) {
+          if (isTableRow(line) && lines[i + 1] && isTableSeparator(lines[i + 1])) {
+            closeList();
+            const headers = splitTableRow(line);
+            const rows = [];
+            i += 2;
+            while (i < lines.length && isTableRow(lines[i])) {
+              rows.push(splitTableRow(lines[i]));
+              i += 1;
+            }
+            i -= 1;
+            html.push("<table><thead><tr>");
+            headers.forEach((cell) => html.push(`<th>${inline(cell)}</th>`));
+            html.push("</tr></thead><tbody>");
+            rows.forEach((row) => {
+              html.push("<tr>");
+              headers.forEach((_, index) => html.push(`<td>${inline(row[index] || "")}</td>`));
+              html.push("</tr>");
+            });
+            html.push("</tbody></table>");
+          } else if (trimmed.startsWith("### ")) {
             closeList();
             html.push(`<h3>${inline(trimmed.slice(4))}</h3>`);
           } else if (trimmed.startsWith("## ")) {
@@ -956,6 +1006,9 @@
           } else if (trimmed.startsWith("# ")) {
             closeList();
             html.push(`<h1>${inline(trimmed.slice(2))}</h1>`);
+          } else if (/^>\s+/.test(trimmed)) {
+            closeList();
+            html.push(`<blockquote>${inline(trimmed.replace(/^>\s+/, ""))}</blockquote>`);
           } else if (/^\d+\.\s+/.test(trimmed)) {
             if (listType !== "ol") {
               closeList();

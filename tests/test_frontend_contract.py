@@ -44,6 +44,25 @@ def test_markdown_renderer_compiles_ai_reply_sample():
     assert "**" not in result.stdout
 
 
+def test_markdown_renderer_supports_tables_and_blockquotes():
+    if shutil.which("node") is None:
+        pytest.skip("node is required to execute the frontend markdown renderer")
+
+    html = HTML.read_text(encoding="utf-8")
+    script = re.search(r"function escapeHtml[\s\S]+?async function jsonFetch", html)
+    assert script is not None
+    renderer = script.group(0).removesuffix("async function jsonFetch")
+    sample = "| 项目 | 状态 |\n| --- | --- |\n| **架构师评价算法** | 高优 |\n\n> 风险需关注"
+    js = f"{renderer}\nconsole.log(renderMarkdown({json.dumps(sample)}));"
+
+    result = subprocess.run(["node", "-e", js], check=True, capture_output=True, text=True)
+
+    assert "<table>" in result.stdout
+    assert "<th>项目</th>" in result.stdout
+    assert "<td><strong>架构师评价算法</strong></td>" in result.stdout
+    assert "<blockquote>风险需关注</blockquote>" in result.stdout
+
+
 def test_frontend_contains_generation_review_flow():
     html = HTML.read_text(encoding="utf-8")
 
