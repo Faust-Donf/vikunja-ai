@@ -20,9 +20,9 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingRes
 from pydantic import BaseModel, Field, field_validator
 
 
-VENUS_API_URL = os.environ["VENUS_API_URL"]
-VENUS_API_KEY = os.environ["VENUS_API_KEY"]
-VENUS_MODEL = os.environ.get("VENUS_MODEL", "hy3-preview")
+DEFAULT_OPENAI_API_BASE_URL = os.environ.get("OPENAI_API_BASE_URL", "https://api.openai.com/v1/chat/completions")
+DEFAULT_OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
+DEFAULT_OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 DB_PATH = DATA_DIR / "plans.db"
 ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN", "").strip()
@@ -129,6 +129,18 @@ class LoginRequest(BaseModel):
     access_token: str = Field(min_length=1)
 
 
+class ApiConfigInput(BaseModel):
+    api_base_url: str = Field(min_length=1, max_length=500)
+    api_key: str = Field(default="", max_length=500)
+    model: str = Field(min_length=1, max_length=120)
+
+
+class ApiConfigResponse(BaseModel):
+    api_base_url: str
+    api_key_set: bool
+    model: str
+
+
 TASK_COLUMNS = [
     "id",
     "source_id",
@@ -177,6 +189,14 @@ def init_db() -> None:
             conn.execute("alter table tasks add column completed_at text")
         if "source_id" not in columns:
             conn.execute("alter table tasks add column source_id text")
+        conn.execute(
+            """
+            create table if not exists settings (
+                key text primary key,
+                value text not null
+            )
+            """
+        )
 
 
 @asynccontextmanager
@@ -452,20 +472,46 @@ def row_lines(rows: list[sqlite3.Row], fallback: str) -> str:
     return "\n".join(lines)
 
 
-async def call_venus(messages: list[dict[str, str]], temperature: float = 0.3) -> str:
+def get_setting(key: str, default: str = "") -> str:
+    with db() as conn:
+        row = conn.execute("select value from settings where key = ?", (key,)).fetchone()
+    return row["value"] if row else default
+
+
+def set_setting(key: str, value: str) -> None:
+    with db() as conn:
+        conn.execute(
+            "insert into settings (key, value) values (?, ?) on conflict(key) do update set value = excluded.value",
+            (key, value),
+        )
+
+
+def get_openai_config() -> dict[str, str]:
+    return {
+        "api_base_url": get_setting("openai_api_base_url", DEFAULT_OPENAI_API_BASE_URL),
+        "api_key": get_setting("openai_api_key", DEFAULT_OPENAI_API_KEY),
+        "model": get_setting("openai_model", DEFAULT_OPENAI_MODEL),
+    }
+
+
+async def call_openai(messages: list[dict[str, str]], temperature: float = 0.3) -> str:
+    config = get_openai_config()
+    api_key = config["api_key"]
+    if not api_key:
+        raise HTTPException(400, "请先配置 OpenAI-compatible API Key")
     headers = {
-        "Authorization": f"Bearer {VENUS_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
     payload = {
-        "model": VENUS_MODEL,
+        "model": config["model"],
         "messages": messages,
         "temperature": temperature,
     }
     async with httpx.AsyncClient(timeout=60) as client:
-        resp = await client.post(VENUS_API_URL, headers=headers, json=payload)
+        resp = await client.post(config["api_base_url"], headers=headers, json=payload)
         if resp.status_code >= 400:
-            raise HTTPException(resp.status_code, f"Venus API 调用失败：{resp.text[:300]}")
+            raise HTTPException(resp.status_code, f"OpenAI-compatible API 调用失败：{resp.text[:300]}")
         data = resp.json()
     return data["choices"][0]["message"]["content"]
 
@@ -508,6 +554,30 @@ async def auth_logout() -> JSONResponse:
     response = JSONResponse({"authenticated": False})
     response.delete_cookie(AUTH_COOKIE)
     return response
+
+
+@app.get("/api/config/openai", response_model=ApiConfigResponse, dependencies=[Depends(require_access)])
+async def read_openai_config() -> ApiConfigResponse:
+    config = get_openai_config()
+    return ApiConfigResponse(
+        api_base_url=config["api_base_url"],
+        api_key_set=bool(config["api_key"]),
+        model=config["model"],
+    )
+
+
+@app.put("/api/config/openai", response_model=ApiConfigResponse, dependencies=[Depends(require_access)])
+async def update_openai_config(config: ApiConfigInput) -> ApiConfigResponse:
+    set_setting("openai_api_base_url", config.api_base_url.strip())
+    if config.api_key.strip():
+        set_setting("openai_api_key", config.api_key.strip())
+    set_setting("openai_model", config.model.strip())
+    updated = get_openai_config()
+    return ApiConfigResponse(
+        api_base_url=updated["api_base_url"],
+        api_key_set=bool(updated["api_key"]),
+        model=updated["model"],
+    )
 
 
 @app.get("/favicon.ico")
@@ -720,7 +790,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
         *history,
         {"role": "user", "content": req.message},
     ]
-    return ChatResponse(reply=await call_venus(messages, temperature=0.4))
+    return ChatResponse(reply=await call_openai(messages, temperature=0.4))
 
 
 @app.post("/api/weekly-report", response_model=WeeklyReportResponse, dependencies=[Depends(require_access)])
@@ -780,7 +850,7 @@ async def weekly_report() -> WeeklyReportResponse:
         },
         {"role": "user", "content": prompt},
     ]
-    return WeeklyReportResponse(report=await call_venus(messages, temperature=0.35))
+    return WeeklyReportResponse(report=await call_openai(messages, temperature=0.35))
 
 
 @app.post("/api/weekly-plan", response_model=WeeklyPlanResponse, dependencies=[Depends(require_access)])
@@ -847,7 +917,7 @@ async def weekly_plan() -> WeeklyPlanResponse:
         },
         {"role": "user", "content": prompt},
     ]
-    return WeeklyPlanResponse(plan=await call_venus(messages, temperature=0.2))
+    return WeeklyPlanResponse(plan=await call_openai(messages, temperature=0.2))
 
 
 @app.post("/api/generate", response_model=GenerateResponse, dependencies=[Depends(require_access)])
@@ -891,7 +961,7 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
 不要生成与现有任务标题相同或高度相似的任务，重复项放进 skipped。
 如果无法判断 ddl 或项目归属，不要编造；对应字段留空或 null，并在 needs_input 中写 plan_date 或 project。
 """
-    content = await call_venus(
+    content = await call_openai(
         [
             {
                 "role": "system",

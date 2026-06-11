@@ -87,6 +87,18 @@ def test_frontend_contains_export_and_backup_actions():
     assert "importFileInput" in html
 
 
+def test_frontend_contains_openai_api_config_flow():
+    html = HTML.read_text(encoding="utf-8")
+
+    assert "OpenAI-compatible API 配置" in html
+    assert "apiConfigBtn" in html
+    assert "apiBaseUrlInput" in html
+    assert "apiKeyInput" in html
+    assert "apiModelInput" in html
+    assert "/api/config/openai" in html
+    assert "已配置，留空则保持不变" in html
+
+
 def test_frontend_contains_access_token_login_flow():
     html = HTML.read_text(encoding="utf-8")
 

@@ -9,9 +9,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 def load_app(tmp_path, monkeypatch):
-    monkeypatch.setenv("VENUS_API_URL", "http://venus.invalid/chat")
-    monkeypatch.setenv("VENUS_API_KEY", "test-key")
-    monkeypatch.setenv("VENUS_MODEL", "test-model")
+    monkeypatch.setenv("OPENAI_API_BASE_URL", "https://api.example.com/v1/chat/completions")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_MODEL", "test-model")
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     monkeypatch.delenv("ACCESS_TOKEN", raising=False)
 
@@ -23,9 +23,9 @@ def load_app(tmp_path, monkeypatch):
 
 
 def load_app_with_access_token(tmp_path, monkeypatch, passcode="test-passcode"):
-    monkeypatch.setenv("VENUS_API_URL", "http://venus.invalid/chat")
-    monkeypatch.setenv("VENUS_API_KEY", "test-key")
-    monkeypatch.setenv("VENUS_MODEL", "test-model")
+    monkeypatch.setenv("OPENAI_API_BASE_URL", "https://api.example.com/v1/chat/completions")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_MODEL", "test-model")
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     monkeypatch.setenv("ACCESS_TOKEN", passcode)
 
@@ -34,6 +34,26 @@ def load_app_with_access_token(tmp_path, monkeypatch, passcode="test-passcode"):
     app = importlib.reload(app)
     app.init_db()
     return app, TestClient(app.app)
+
+
+def test_openai_config_can_be_updated_without_returning_secret(tmp_path, monkeypatch):
+    _, client = load_app(tmp_path, monkeypatch)
+
+    initial = client.get("/api/config/openai").json()
+    updated = client.put(
+        "/api/config/openai",
+        json={
+            "api_base_url": "https://example.com/v1/chat/completions",
+            "api_key": "new-key",
+            "model": "custom-model",
+        },
+    ).json()
+    persisted = client.get("/api/config/openai").json()
+
+    assert initial == {"api_base_url": "https://api.example.com/v1/chat/completions", "api_key_set": True, "model": "test-model"}
+    assert updated == {"api_base_url": "https://example.com/v1/chat/completions", "api_key_set": True, "model": "custom-model"}
+    assert persisted == updated
+    assert "new-key" not in str(updated)
 
 
 def test_access_token_protects_task_api_when_enabled(tmp_path, monkeypatch):
@@ -160,7 +180,7 @@ def test_generate_filters_existing_tasks_and_preserves_input_requests(tmp_path, 
         },
     )
 
-    async def fake_call_venus(messages, temperature=0.3):
+    async def fake_call_openai(messages, temperature=0.3):
         return """
         {
           "summary": "生成计划",
@@ -190,7 +210,7 @@ def test_generate_filters_existing_tasks_and_preserves_input_requests(tmp_path, 
         }
         """
 
-    monkeypatch.setattr(app_module, "call_venus", fake_call_venus)
+    monkeypatch.setattr(app_module, "call_openai", fake_call_openai)
     response = client.post("/api/generate", json={"prompt": "做任务", "horizon": "本周"})
 
     assert response.status_code == 200
@@ -203,7 +223,7 @@ def test_generate_filters_existing_tasks_and_preserves_input_requests(tmp_path, 
 def test_generate_keeps_single_sentence_request_to_one_task(tmp_path, monkeypatch):
     app_module, client = load_app(tmp_path, monkeypatch)
 
-    async def fake_call_venus(messages, temperature=0.3):
+    async def fake_call_openai(messages, temperature=0.3):
         assert "默认只生成 1 个任务" in messages[-1]["content"]
         return """
         {
@@ -244,7 +264,7 @@ def test_generate_keeps_single_sentence_request_to_one_task(tmp_path, monkeypatc
         }
         """
 
-    monkeypatch.setattr(app_module, "call_venus", fake_call_venus)
+    monkeypatch.setattr(app_module, "call_openai", fake_call_openai)
     response = client.post(
         "/api/generate",
         json={
@@ -263,7 +283,7 @@ def test_generate_keeps_single_sentence_request_to_one_task(tmp_path, monkeypatc
 def test_generate_infers_project_and_fuzzy_deadline_from_prompt(tmp_path, monkeypatch):
     app_module, client = load_app(tmp_path, monkeypatch)
 
-    async def fake_call_venus(messages, temperature=0.3):
+    async def fake_call_openai(messages, temperature=0.3):
         return """
         {
           "summary": "中长期年度预测计划",
@@ -283,7 +303,7 @@ def test_generate_infers_project_and_fuzzy_deadline_from_prompt(tmp_path, monkey
         }
         """
 
-    monkeypatch.setattr(app_module, "call_venus", fake_call_venus)
+    monkeypatch.setattr(app_module, "call_openai", fake_call_openai)
     response = client.post(
         "/api/generate",
         json={
@@ -303,11 +323,11 @@ def test_weekly_report_uses_completed_and_planned_tasks(tmp_path, monkeypatch):
     app_module, client = load_app(tmp_path, monkeypatch)
     captured = {}
 
-    async def fake_call_venus(messages, temperature=0.3):
+    async def fake_call_openai(messages, temperature=0.3):
         captured["prompt"] = messages[-1]["content"]
         return "# 本周周报\n\n- 已完成任务\n- 下周 Todo"
 
-    monkeypatch.setattr(app_module, "call_venus", fake_call_venus)
+    monkeypatch.setattr(app_module, "call_openai", fake_call_openai)
 
     task = client.post(
         "/api/tasks",
@@ -347,12 +367,12 @@ def test_weekly_plan_uses_stable_project_grouped_prompt(tmp_path, monkeypatch):
     app_module, client = load_app(tmp_path, monkeypatch)
     captured = {}
 
-    async def fake_call_venus(messages, temperature=0.3):
+    async def fake_call_openai(messages, temperature=0.3):
         captured["prompt"] = messages[-1]["content"]
         captured["temperature"] = temperature
         return "本周计划\n\n【测试项目】\n- 本周项目任务：明确完成标准"
 
-    monkeypatch.setattr(app_module, "call_venus", fake_call_venus)
+    monkeypatch.setattr(app_module, "call_openai", fake_call_openai)
 
     client.post(
         "/api/tasks",
