@@ -1504,7 +1504,13 @@
       $("closeGenerateBtn").addEventListener("click", () => $("generateDialog").close());
 
       function renderGeneratedTasks(summary = "", skipped = []) {
+        const projectOptions = [...new Set(tasks.map((task) => (task.project || "").trim()).filter(Boolean))].sort((a, b) =>
+          a.localeCompare(b, "zh-Hans-CN"),
+        );
         $("generatedResult").innerHTML = `
+          <datalist id="generatedProjectList">
+            ${projectOptions.map((project) => `<option value="${escapeHtml(project)}"></option>`).join("")}
+          </datalist>
           ${summary ? `<div class="status" style="margin-top: 12px">${escapeHtml(summary)}</div>` : ""}
           ${
             skipped.length
@@ -1531,7 +1537,7 @@
                               : ""
                           }
                           <div class="generated-grid">
-                            <input data-gen-field="project" data-gen-index="${index}" placeholder="项目" value="${escapeHtml(task.project || "")}" />
+                            <input list="generatedProjectList" data-gen-field="project" data-gen-index="${index}" placeholder="项目（可选已有或新建）" value="${escapeHtml(task.project || "")}" />
                             <input type="date" data-gen-field="plan_date" data-gen-index="${index}" value="${escapeHtml(task.plan_date || "")}" />
                             <select data-gen-field="priority" data-gen-index="${index}">
                               ${["高", "中", "低"].map((v) => `<option ${task.priority === v ? "selected" : ""}>${v}</option>`).join("")}

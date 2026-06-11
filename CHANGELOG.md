@@ -47,6 +47,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- AI 生成任务预览中的"项目"输入框支持下拉选择已有项目，也支持直接打字创建新项目（基于 HTML datalist）。
+
 ### Fixed
 
 - Fixed AI task generation not parsing Chinese natural-language time expressions like "下周前三" (next week, first 3 days), "本周前N" (this week, first N days), and relative dates like "今天/明天/后天" (today/tomorrow/day after tomorrow).

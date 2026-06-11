@@ -56,6 +56,14 @@ def test_frontend_contains_generation_review_flow():
     assert "needs_input" in html
 
 
+def test_frontend_generation_project_supports_existing_or_new():
+    html = HTML.read_text(encoding="utf-8")
+
+    assert 'list="generatedProjectList"' in html
+    assert 'id="generatedProjectList"' in html
+    assert "tasks.map((task) => (task.project || \"\").trim()).filter(Boolean)" in html
+
+
 def test_frontend_contains_quadrant_layout_rules():
     html = HTML.read_text(encoding="utf-8")
 
