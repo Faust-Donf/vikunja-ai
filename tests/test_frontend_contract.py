@@ -25,11 +25,15 @@ def test_frontend_contains_ai_assistant_and_markdown_renderer():
     assert 'weeklyPlanBtn").addEventListener("click", generateWeeklyPlan)' in html
 
 
-def test_chat_panel_uses_full_view_height():
+def test_layout_uses_internal_scrolling_without_page_blank_space():
     html = HTML.read_text(encoding="utf-8")
 
-    assert "height: calc(100vh - 94px)" in html
-    assert "max-height: calc(100vh - 94px)" in html
+    assert "height: 100vh" in html
+    assert "overflow: hidden" in html
+    assert "grid-template-rows: auto minmax(0, 1fr)" in html
+    assert "grid-template-rows: auto auto minmax(0, 1fr) auto" in html
+    assert "grid-template-rows: auto auto auto minmax(0, 1fr)" in html
+    assert "max-height: calc(100vh - 94px)" not in html
 
 
 def test_chat_input_enter_sends_and_shift_enter_keeps_newline():

@@ -58,4 +58,4 @@
 - Fixed AI task generation not inferring deadlines from month-period expressions like "7月中" and "7月中旬".
 - Fixed AI assistant Markdown rendering for tables and blockquotes.
 - Changed AI assistant input so Enter sends messages and Shift+Enter inserts a newline.
-- Extended the AI assistant panel height to match the left task board.
+- Fixed the main layout to use internal scrolling, preventing blank space under the AI assistant panel while scrolling the task board.
