@@ -25,6 +25,13 @@ def test_frontend_contains_ai_assistant_and_markdown_renderer():
     assert 'weeklyPlanBtn").addEventListener("click", generateWeeklyPlan)' in html
 
 
+def test_chat_panel_uses_full_view_height():
+    html = HTML.read_text(encoding="utf-8")
+
+    assert "height: calc(100vh - 94px)" in html
+    assert "max-height: calc(100vh - 94px)" in html
+
+
 def test_chat_input_enter_sends_and_shift_enter_keeps_newline():
     html = HTML.read_text(encoding="utf-8")
 
