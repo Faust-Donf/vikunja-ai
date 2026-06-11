@@ -46,6 +46,11 @@
         --radius: 18px;
         --radius-lg: 24px;
         --radius-pill: 50px;
+        /* theme knobs (classic theme overrides these) */
+        --press-depth: 3px; /* how far a 3D button sinks on click */
+        --btn-border-width: 2px;
+        --body-font: "Nunito", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+        --display-font: "Baloo 2", "PingFang SC", "Microsoft YaHei", sans-serif;
         /* semantic aliases reused across the sheet */
         --mint: var(--accent);
         --mint-ink: var(--accent-ink);
@@ -57,8 +62,108 @@
         --danger-ink: var(--berry-ink);
         --danger-soft: var(--berry-soft);
       }
-      * {
-        box-sizing: border-box;
+      /* === 原版主题 classic theme (vikunja-ai original) === */
+      html[data-theme="classic"] {
+        --bg: #f4f6f8;
+        --bg-2: #eef1f5;
+        --panel: #ffffff;
+        --ink: #17202a;
+        --ink-strong: #0f1720;
+        --muted: #687481;
+        --line: #dde3ea;
+        --line-strong: #c2cbd6;
+        --soft: #f8fafc;
+        --accent: #146b63; /* original teal-green */
+        --accent-ink: #0f5249;
+        --accent-soft: #e3f3ef;
+        --accent-press: #0f5249;
+        --leaf: #2f7a4f; /* complete */
+        --leaf-ink: #226139;
+        --leaf-soft: #eaf4ed;
+        --leaf-press: #226139;
+        --sun: #c28b16; /* medium priority */
+        --sun-ink: #875c08;
+        --sun-soft: #fff3d6;
+        --berry: #a43f30; /* danger / high */
+        --berry-ink: #832e22;
+        --berry-soft: #fbe8e3;
+        --berry-press: #832e22;
+        --wood-press: #c2cbd6;
+        --urgent: #d44b3e;
+        --important: #2f6fa5;
+        --shadow: 0 10px 32px rgba(28, 39, 54, 0.08);
+        --shadow-soft: 0 4px 14px rgba(28, 39, 54, 0.06);
+        --radius: 8px;
+        --radius-lg: 10px;
+        --radius-pill: 6px;
+        --press-depth: 0px; /* flat, no 3D sink */
+        --btn-border-width: 1px;
+        --body-font: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
+        --display-font: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      /* classic: flatten the animal 3D button shadows */
+      html[data-theme="classic"] .primary,
+      html[data-theme="classic"] .secondary,
+      html[data-theme="classic"] .ghost,
+      html[data-theme="classic"] .danger,
+      html[data-theme="classic"] .complete,
+      html[data-theme="classic"] .row-actions button,
+      html[data-theme="classic"] .primary:active,
+      html[data-theme="classic"] .secondary:active,
+      html[data-theme="classic"] .ghost:active,
+      html[data-theme="classic"] .danger:active,
+      html[data-theme="classic"] .complete:active,
+      html[data-theme="classic"] .row-actions button:active {
+        box-shadow: none;
+      }
+      html[data-theme="classic"] .secondary {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      html[data-theme="classic"] .danger {
+        background: var(--berry-soft);
+        color: var(--berry-ink);
+        border-color: #e7c4bc;
+      }
+      html[data-theme="classic"] .complete {
+        background: var(--leaf-soft);
+        color: var(--leaf-ink);
+        border-color: #cbe2d3;
+      }
+      /* classic: drop animal decorations & finger cursor */
+      html[data-theme="classic"] .mascot,
+      html[data-theme="classic"] .island-foot,
+      html[data-theme="classic"] .board-turf {
+        display: none !important;
+      }
+      html[data-theme="classic"] .board {
+        background-image: none;
+      }
+      html[data-theme="classic"] body,
+      html[data-theme="classic"] a,
+      html[data-theme="classic"] button,
+      html[data-theme="classic"] summary,
+      html[data-theme="classic"] [role="button"],
+      html[data-theme="classic"] .quadrant-card,
+      html[data-theme="classic"] .sort-button,
+      html[data-theme="classic"] label,
+      html[data-theme="classic"] select {
+        cursor: auto;
+      }
+      html[data-theme="classic"] a,
+      html[data-theme="classic"] button,
+      html[data-theme="classic"] [role="button"],
+      html[data-theme="classic"] .quadrant-card,
+      html[data-theme="classic"] .sort-button,
+      html[data-theme="classic"] select {
+        cursor: pointer;
+      }
+      html[data-theme="classic"] input[type="text"],
+      html[data-theme="classic"] input[type="password"],
+      html[data-theme="classic"] input[type="date"],
+      html[data-theme="classic"] input[type="file"],
+      html[data-theme="classic"] textarea {
+        cursor: text;
       }
       [hidden] {
         display: none !important;
@@ -97,10 +202,13 @@
           var(--bg);
         background-attachment: fixed;
       }
+      html[data-theme="classic"] body {
+        background: var(--bg);
+      }
       body {
         margin: 0;
         color: var(--ink);
-        font: 14px/1.5715 "Nunito", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+        font: 14px/1.5715 var(--body-font);
         letter-spacing: 0.02em;
       }
       button,
@@ -110,7 +218,7 @@
         font: inherit;
       }
       button {
-        border: 2px solid transparent;
+        border: var(--btn-border-width) solid transparent;
         border-radius: var(--radius-pill);
         height: 36px;
         padding: 0 16px;
@@ -121,7 +229,7 @@
       }
       /* Animal-island 3D press: solid offset shadow, compresses on click */
       button:active {
-        transform: translateY(3px);
+        transform: translateY(var(--press-depth));
       }
       button:focus-visible {
         outline: 2px solid var(--accent);
@@ -209,7 +317,7 @@
       }
       .auth-card h1 {
         margin-bottom: 6px;
-        font-family: "Baloo 2", "PingFang SC", sans-serif;
+        font-family: var(--display-font);
         color: var(--accent-ink);
       }
       .auth-card input {
@@ -262,14 +370,14 @@
         margin: 0;
         font-size: 21px;
         letter-spacing: 0.2px;
-        font-family: "Baloo 2", "PingFang SC", "Microsoft YaHei", sans-serif;
+        font-family: var(--display-font);
         color: var(--accent-ink);
       }
       .sub {
         color: var(--accent-ink);
         margin-left: 10px;
         font-size: 13px;
-        font-family: "Nunito", "Noto Sans SC", sans-serif;
+        font-family: var(--body-font);
         font-weight: 700;
       }
       /* === 签名吉物：动森小狗 villager-pup mascot (pure CSS) ===
@@ -877,7 +985,7 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        font-family: "Baloo 2", "PingFang SC", sans-serif;
+        font-family: var(--display-font);
       }
       .quadrant-action {
         flex: 0 0 auto;
@@ -968,7 +1076,7 @@
         gap: 10px;
         font-size: 17px;
         font-weight: 800;
-        font-family: "Baloo 2", "PingFang SC", sans-serif;
+        font-family: var(--display-font);
         color: var(--accent-ink);
       }
       .quick {
@@ -1139,7 +1247,7 @@
         border-bottom: 2px dashed var(--line);
       }
       .dialog-head strong {
-        font-family: "Baloo 2", "PingFang SC", sans-serif;
+        font-family: var(--display-font);
         font-size: 17px;
         color: var(--accent-ink);
       }
@@ -1252,7 +1360,7 @@
         color: #fff;
       }
       .foot-note {
-        font-family: "Nunito", "Noto Sans SC", sans-serif;
+        font-family: var(--body-font);
         font-weight: 800;
         font-size: 14px;
         letter-spacing: 0.04em;
@@ -1344,6 +1452,13 @@
         }
       }
     </style>
+    <script>
+      // apply saved theme before first paint to avoid flash
+      (function () {
+        var t = localStorage.getItem("theme") || "animal";
+        document.documentElement.dataset.theme = t;
+      })();
+    </script>
   </head>
   <body>
     <div class="auth-screen" id="authScreen" hidden>
@@ -1369,6 +1484,10 @@
           <h1>个人计划表<span class="sub">表格管理 + AI助手</span></h1>
         </div>
         <div class="filters">
+          <select id="themeSelect" title="切换主题" aria-label="切换主题">
+            <option value="animal">动森小岛</option>
+            <option value="classic">原版</option>
+          </select>
           <button class="ghost" id="exportCsvBtn">导出 CSV</button>
           <button class="ghost" id="backupJsonBtn">下载备份</button>
           <button class="ghost" id="importJsonBtn">导入备份</button>
@@ -1557,6 +1676,24 @@
 
     <script>
       const $ = (id) => document.getElementById(id);
+
+      // === Theme switcher (animal / classic) ===
+      function applyTheme(theme) {
+        document.documentElement.dataset.theme = theme;
+        localStorage.setItem("theme", theme);
+        const sel = $("themeSelect");
+        if (sel) sel.value = theme;
+      }
+      (function initTheme() {
+        const saved = localStorage.getItem("theme") || "animal";
+        const sel = $("themeSelect");
+        if (sel) {
+          sel.value = saved;
+          sel.addEventListener("change", () => applyTheme(sel.value));
+        }
+        document.documentElement.dataset.theme = saved;
+      })();
+
       const fields = ["title", "status", "priority", "plan_date", "project", "tags", "notes"];
       const quadrantMeta = {
         do: { name: "重要且紧急", hint: "马上处理", className: "q-do" },
