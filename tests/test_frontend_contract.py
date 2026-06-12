@@ -114,6 +114,16 @@ def test_frontend_contains_quadrant_layout_rules():
     assert "toolbar-main" in html
 
 
+def test_toolbar_filters_stay_on_one_compact_row():
+    html = HTML.read_text(encoding="utf-8")
+
+    assert "grid-template-columns: minmax(180px, 1fr) repeat(6, minmax(88px, auto))" in html
+    assert ".toolbar-main.filters" in html
+    assert "flex-wrap: nowrap" in html
+    assert "height: 30px" in html
+    assert "padding: 8px 10px" in html
+
+
 def test_frontend_contains_export_and_backup_actions():
     html = HTML.read_text(encoding="utf-8")
 

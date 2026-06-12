@@ -155,8 +155,8 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 12px;
-        padding: 14px;
+        gap: 8px;
+        padding: 8px 10px;
         border-bottom: 1px solid var(--line);
       }
       .board-summary {
@@ -168,10 +168,11 @@
       }
       .toolbar-main {
         display: grid;
-        grid-template-columns: minmax(220px, 1fr) auto auto auto auto auto;
-        gap: 8px;
+        grid-template-columns: minmax(180px, 1fr) repeat(6, minmax(88px, auto));
+        gap: 6px;
         width: 100%;
         align-items: center;
+        flex-wrap: nowrap;
       }
       .filters {
         display: flex;
@@ -179,16 +180,25 @@
         align-items: center;
         flex-wrap: wrap;
       }
+      .toolbar-main.filters {
+        flex-wrap: nowrap;
+      }
       .filters input,
       .filters select {
-        height: 34px;
+        height: 30px;
+        min-width: 0;
         border: 1px solid var(--line);
         border-radius: 6px;
-        padding: 0 10px;
+        padding: 0 8px;
         background: #fff;
       }
-      .filters input {
-        min-width: 220px;
+      .toolbar-main > * {
+        width: 100%;
+      }
+      .toolbar-main button {
+        height: 30px;
+        padding: 0 8px;
+        white-space: nowrap;
       }
       .board {
         display: grid;
