@@ -490,6 +490,33 @@ def row_lines(rows: list[sqlite3.Row], fallback: str) -> str:
     return "\n".join(lines)
 
 
+def estimated_hours(row: sqlite3.Row) -> int:
+    return {"高": 4, "中": 2, "低": 1}.get(row["priority"], 2)
+
+
+def weekly_project_summary(completed: list[sqlite3.Row], planned: list[sqlite3.Row]) -> str:
+    projects: dict[str, dict[str, int]] = {}
+    for row in completed:
+        project = row["project"] or "未归类"
+        projects.setdefault(project, {"completed": 0, "completed_hours": 0, "planned": 0, "planned_hours": 0})
+        projects[project]["completed"] += 1
+        projects[project]["completed_hours"] += estimated_hours(row)
+    for row in planned:
+        project = row["project"] or "未归类"
+        projects.setdefault(project, {"completed": 0, "completed_hours": 0, "planned": 0, "planned_hours": 0})
+        projects[project]["planned"] += 1
+        projects[project]["planned_hours"] += estimated_hours(row)
+    if not projects:
+        return "无项目数据。"
+    lines = []
+    for project, stats in sorted(projects.items()):
+        lines.append(
+            f"- {project}: 本周完成 {stats['completed']} 项，预估投入 {stats['completed_hours']}h；"
+            f"下周候选 {stats['planned']} 项，预估投入 {stats['planned_hours']}h"
+        )
+    return "\n".join(lines)
+
+
 def get_setting(key: str, default: str = "") -> str:
     with db() as conn:
         row = conn.execute("select value from settings where key = ?", (key,)).fetchone()
@@ -843,25 +870,59 @@ async def weekly_report() -> WeeklyReportResponse:
             (next_start_s, next_end_s),
         ).fetchall()
     prompt = f"""
-请根据下面的个人任务表数据，生成一份中文周报。
+请根据下面的个人任务表数据，生成一份中文周报。周报要按项目归类，像发给主管/项目干系人的工作汇总，避免流水账。
 
 本周范围：{start_s} 至 {end_s}
 下周范围：{next_start_s} 至 {next_end_s}
 
 本周已完成任务数：{len(completed)}
+本周项目统计（预估耗时按优先级粗估：高=4h，中=2h，低=1h，只作为周报口径参考）：
+{weekly_project_summary(completed, planned)}
+
 本周已完成任务明细：
 {row_lines(completed, "本周没有记录到已归档完成任务。")}
 
 下周待办候选：
 {row_lines(planned, "暂时没有下周待办候选。")}
 
-输出要求：
-1. 标题用“本周周报（{start_s} - {end_s}）”
-2. 分为：本周完成、本周重点与价值、风险/阻塞、下周 Todo、优先级建议
-3. 下周 Todo 要按重要性和紧急性排序，说明哪些是重要且紧急、重要不紧急
-4. 本周完成数量必须使用上方“本周已完成任务数”的数值，不要自行重新计数或估算
-5. 不要编造任务表里没有的信息；如果完成项少，要明确说数据不足
-6. 语气像个人工作复盘，简洁、可直接发送
+输出格式必须稳定，严格按下面结构输出，不要使用 Markdown 表格：
+
+本周周报（{start_s} - {end_s}）
+
+一、本周总体概览
+- 完成任务数：必须写 {len(completed)} 项，不要自行重新计数或估算。
+- 本周主线：用 2-4 句话概括本周主要推进方向、产出价值和整体进展。
+- 投入分布：按项目概括主要精力投入，结合“本周项目统计”的预估耗时。
+
+二、按项目进展
+【<项目名或未归类>】
+- 本周完成：列出该项目本周完成了什么，合并同类项，不要逐条机械复制。
+- 产出/价值：说明这些完成项带来的业务价值、效率提升、风险降低或交付进展。
+- 预估投入：使用“本周项目统计”里的该项目预估投入小时数；如果没有数据写“暂无明确投入估算”。
+- 下周进展：基于“下周待办候选”列出该项目下周计划推进什么。
+
+三、风险与阻塞
+- 只写任务表中状态为阻塞、备注里明确有风险，或下周高优先级任务暴露出的风险。
+- 没有明确风险就写“暂无明确风险/阻塞”。
+
+四、下周重点计划
+- 按项目列出 3-7 个下周重点。
+- 每个重点说明目标、优先级、预估投入和建议完成时间。
+- 高优先级、进行中、阻塞、下周有计划日期的任务优先进入。
+
+五、需要协同/确认事项
+- 从任务标题和备注中提取需要他人确认、跨团队协同、需求澄清的事项。
+- 没有就写“暂无明确需要协同事项”。
+
+六、总结
+- 用 2-3 句话总结本周成果、节奏判断、下周最重要抓手。
+
+规则：
+1. 本周完成数量必须使用 {len(completed)}，不能写其他数字。
+2. 必须按 project 归类；project 为空时归到“未归类”。
+3. 不要编造任务表里没有的项目、日期、负责人、业务背景或量化结果。
+4. 可以对同项目任务做归纳总结，但必须能从任务明细中追溯。
+5. 语气要专业、简洁、可直接复制发送。
 """
     messages = [
         {
