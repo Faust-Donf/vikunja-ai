@@ -476,13 +476,14 @@ def week_range(today: date | None = None) -> tuple[date, date, date, date]:
     return start, end, next_start, next_end
 
 
-def row_lines(rows: list[sqlite3.Row], fallback: str) -> str:
+def row_lines(rows: list[sqlite3.Row], fallback: str, include_ids: bool = True) -> str:
     if not rows:
         return fallback
     lines = []
     for row in rows:
+        prefix = f"- #{row['id']} [{row['status']}]" if include_ids else f"- [{row['status']}]"
         lines.append(
-            f"- #{row['id']} [{row['status']}] {row['title']} "
+            f"{prefix} {row['title']} "
             f"优先级:{row['priority']} 计划日期:{row['plan_date'] or '-'} "
             f"完成时间:{row['completed_at'] or '-'} 项目:{row['project'] or '-'} "
             f"标签:{row['tags'] or '-'} 备注:{row['notes'] or '-'}"
@@ -861,7 +862,7 @@ async def weekly_report() -> WeeklyReportResponse:
             (next_start_s, next_end_s),
         ).fetchall()
     prompt = f"""
-请根据下面的个人任务表数据，生成一份中文周报。周报要按项目归类，像发给主管/项目干系人的工作汇总，避免流水账。
+请根据下面的个人任务表数据，生成一份中文周报。周报面向领导/项目干系人，必须聚焦项目进展、关键 milestone、roadmap 和风险，不要写成个人 Todo 流水账。
 
 本周范围：{start_s} 至 {end_s}
 下周范围：{next_start_s} 至 {next_end_s}
@@ -870,11 +871,11 @@ async def weekly_report() -> WeeklyReportResponse:
 本周项目统计（仅统计任务数量，不提供固定耗时；工作量请你根据任务标题、备注、任务数量、任务复杂度自行判断）：
 {weekly_project_summary(completed, planned)}
 
-本周已完成任务明细：
-{row_lines(completed, "本周没有记录到已归档完成任务。")}
+本周已完成任务明细（仅供归纳，不要逐条罗列，不要输出任务编号）：
+{row_lines(completed, "本周没有记录到已归档完成任务。", include_ids=False)}
 
-下周待办候选：
-{row_lines(planned, "暂时没有下周待办候选。")}
+下周待办候选（仅供提炼 roadmap，不要逐条罗列，不要输出任务编号）：
+{row_lines(planned, "暂时没有下周待办候选。", include_ids=False)}
 
 输出格式必须稳定，严格按下面结构输出，不要使用 Markdown 表格：
 
@@ -885,10 +886,10 @@ async def weekly_report() -> WeeklyReportResponse:
 - 本周主线：用 2-4 句话概括本周主要推进方向、产出价值和整体进展。
 - 投入分布：按项目概括主要精力投入，请基于任务标题、备注、任务数量和复杂度自行判断工作量，不要机械按优先级折算。
 
-二、按项目进展
+二、按项目进展与关键里程碑
 【<项目名或未归类>】
-- 本周完成：列出该项目本周完成了什么，合并同类项，不要逐条机械复制。
-- 产出/价值：说明这些完成项带来的业务价值、效率提升、风险降低或交付进展。
+- 项目进展：用 2-4 句话概括本周该项目推进到什么阶段、解决了什么关键问题、形成了什么阶段性产出；不要逐条罗列具体 Todo。
+- 关键 milestone：提炼 1-3 个本周达成的里程碑或阶段成果；如果没有明确里程碑，写“本周主要处于推进/优化阶段”。
 - 本周预计投入时间：根据该项目的完成项数量、任务复杂度、备注信息和交付难度，自行估算本周投入时间（例如“约 0.5 天 / 1-2 天 / 3 天以上”或“约 X 小时”）；不要按优先级固定换算小时。
 - 工作量判断：补充说明为什么这样估算，判断本周投入是高/中/低或给出合理的文字说明。
 
@@ -896,9 +897,9 @@ async def weekly_report() -> WeeklyReportResponse:
 - 只写任务表中状态为阻塞、备注里明确有风险，或下周高优先级任务暴露出的风险。
 - 没有明确风险就写“暂无明确风险/阻塞”。
 
-四、下周重点计划
-- 按项目列出 3-7 个下周重点。
-- 每个重点说明目标、优先级、工作量判断和建议完成时间。
+四、下周 Roadmap
+- 按项目输出下周 roadmap，不要逐条罗列 Todo。
+- 每个项目提炼 1-3 个推进方向或关键里程碑，说明目标、优先级、工作量判断和建议完成时间。
 - 高优先级、进行中、阻塞、下周有计划日期的任务优先进入。
 
 五、需要协同/确认事项
@@ -911,10 +912,11 @@ async def weekly_report() -> WeeklyReportResponse:
 规则：
 1. 本周完成数量必须使用 {len(completed)}，不能写其他数字。
 2. 必须按 project 归类；project 为空时归到“未归类”。
-3. 不要编造任务表里没有的项目、日期、负责人、业务背景或量化结果。
-4. 工作量判断由你根据任务内容自行判断，不要使用“高优=4h、中优=2h、低优=1h”等固定公式。
-5. 可以对同项目任务做归纳总结，但必须能从任务明细中追溯。
-6. 语气要专业、简洁、可直接复制发送。
+3. 不要输出 #16、#23 这类任务编号，也不要逐条罗列每个项目里的具体工作 Todo。
+4. 不要编造任务表里没有的项目、日期、负责人、业务背景或量化结果。
+5. 工作量判断由你根据任务内容自行判断，不要使用“高优=4h、中优=2h、低优=1h”等固定公式。
+6. 可以对同项目任务做归纳总结，但必须能从任务明细中追溯。
+7. 语气要专业、简洁、适合领导汇报，可直接复制发送。
 """
     messages = [
         {
