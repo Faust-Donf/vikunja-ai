@@ -490,30 +490,21 @@ def row_lines(rows: list[sqlite3.Row], fallback: str) -> str:
     return "\n".join(lines)
 
 
-def estimated_hours(row: sqlite3.Row) -> int:
-    return {"高": 4, "中": 2, "低": 1}.get(row["priority"], 2)
-
-
 def weekly_project_summary(completed: list[sqlite3.Row], planned: list[sqlite3.Row]) -> str:
     projects: dict[str, dict[str, int]] = {}
     for row in completed:
         project = row["project"] or "未归类"
-        projects.setdefault(project, {"completed": 0, "completed_hours": 0, "planned": 0, "planned_hours": 0})
+        projects.setdefault(project, {"completed": 0, "planned": 0})
         projects[project]["completed"] += 1
-        projects[project]["completed_hours"] += estimated_hours(row)
     for row in planned:
         project = row["project"] or "未归类"
-        projects.setdefault(project, {"completed": 0, "completed_hours": 0, "planned": 0, "planned_hours": 0})
+        projects.setdefault(project, {"completed": 0, "planned": 0})
         projects[project]["planned"] += 1
-        projects[project]["planned_hours"] += estimated_hours(row)
     if not projects:
         return "无项目数据。"
     lines = []
     for project, stats in sorted(projects.items()):
-        lines.append(
-            f"- {project}: 本周完成 {stats['completed']} 项，预估投入 {stats['completed_hours']}h；"
-            f"下周候选 {stats['planned']} 项，预估投入 {stats['planned_hours']}h"
-        )
+        lines.append(f"- {project}: 本周完成 {stats['completed']} 项；下周候选 {stats['planned']} 项")
     return "\n".join(lines)
 
 
@@ -876,7 +867,7 @@ async def weekly_report() -> WeeklyReportResponse:
 下周范围：{next_start_s} 至 {next_end_s}
 
 本周已完成任务数：{len(completed)}
-本周项目统计（预估耗时按优先级粗估：高=4h，中=2h，低=1h，只作为周报口径参考）：
+本周项目统计（仅统计任务数量，不提供固定耗时；工作量请你根据任务标题、备注、任务数量、任务复杂度自行判断）：
 {weekly_project_summary(completed, planned)}
 
 本周已完成任务明细：
@@ -892,13 +883,13 @@ async def weekly_report() -> WeeklyReportResponse:
 一、本周总体概览
 - 完成任务数：必须写 {len(completed)} 项，不要自行重新计数或估算。
 - 本周主线：用 2-4 句话概括本周主要推进方向、产出价值和整体进展。
-- 投入分布：按项目概括主要精力投入，结合“本周项目统计”的预估耗时。
+- 投入分布：按项目概括主要精力投入，请基于任务标题、备注、任务数量和复杂度自行判断工作量，不要机械按优先级折算。
 
 二、按项目进展
 【<项目名或未归类>】
 - 本周完成：列出该项目本周完成了什么，合并同类项，不要逐条机械复制。
 - 产出/价值：说明这些完成项带来的业务价值、效率提升、风险降低或交付进展。
-- 预估投入：使用“本周项目统计”里的该项目预估投入小时数；如果没有数据写“暂无明确投入估算”。
+- 工作量判断：根据该项目的完成项数量、任务复杂度、备注信息和交付难度，判断本周投入是高/中/低或给出合理的文字说明；不要按优先级固定换算小时。
 - 下周进展：基于“下周待办候选”列出该项目下周计划推进什么。
 
 三、风险与阻塞
@@ -907,7 +898,7 @@ async def weekly_report() -> WeeklyReportResponse:
 
 四、下周重点计划
 - 按项目列出 3-7 个下周重点。
-- 每个重点说明目标、优先级、预估投入和建议完成时间。
+- 每个重点说明目标、优先级、工作量判断和建议完成时间。
 - 高优先级、进行中、阻塞、下周有计划日期的任务优先进入。
 
 五、需要协同/确认事项
@@ -921,8 +912,9 @@ async def weekly_report() -> WeeklyReportResponse:
 1. 本周完成数量必须使用 {len(completed)}，不能写其他数字。
 2. 必须按 project 归类；project 为空时归到“未归类”。
 3. 不要编造任务表里没有的项目、日期、负责人、业务背景或量化结果。
-4. 可以对同项目任务做归纳总结，但必须能从任务明细中追溯。
-5. 语气要专业、简洁、可直接复制发送。
+4. 工作量判断由你根据任务内容自行判断，不要使用“高优=4h、中优=2h、低优=1h”等固定公式。
+5. 可以对同项目任务做归纳总结，但必须能从任务明细中追溯。
+6. 语气要专业、简洁、可直接复制发送。
 """
     messages = [
         {

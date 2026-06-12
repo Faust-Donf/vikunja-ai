@@ -373,10 +373,12 @@ def test_weekly_report_uses_completed_and_planned_tasks(tmp_path, monkeypatch):
     assert "本周已完成任务数：1" in captured["prompt"]
     assert "一、本周总体概览" in captured["prompt"]
     assert "二、按项目进展" in captured["prompt"]
-    assert "预估投入" in captured["prompt"]
+    assert "工作量判断" in captured["prompt"]
     assert "下周进展" in captured["prompt"]
     assert "五、需要协同/确认事项" in captured["prompt"]
-    assert "测试: 本周完成 1 项，预估投入 4h；下周候选 1 项，预估投入 4h" in captured["prompt"]
+    assert "测试: 本周完成 1 项；下周候选 1 项" in captured["prompt"]
+    assert "不要使用“高优=4h、中优=2h、低优=1h”等固定公式" in captured["prompt"]
+    assert "预估投入 4h" not in captured["prompt"]
     assert "规则：" in captured["prompt"]
 
 
