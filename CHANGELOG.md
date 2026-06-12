@@ -51,7 +51,7 @@
 
 - AI 生成任务预览中的"项目"输入框支持下拉选择已有项目，也支持直接打字创建新项目（基于 HTML datalist）。
 - Added OpenAI-compatible API configuration in the web UI, including API Base URL, API Key, and model settings.
-- Enhanced weekly report generation with leadership-oriented project progress, key milestones, AI-judged weekly effort estimate, separate roadmap, risks, and coordination items.
+- Enhanced weekly report generation with a professional report-analyst role, leadership-oriented project progress, key milestones, workload judgment, roadmap, risks, and insights.
 
 ### Fixed
 
