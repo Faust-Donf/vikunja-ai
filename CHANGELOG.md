@@ -60,3 +60,4 @@
 - Changed AI assistant input so Enter sends messages and Shift+Enter inserts a newline.
 - Fixed the main layout to use internal scrolling, preventing blank space under the AI assistant panel while scrolling the task board.
 - Compacted the task filter toolbar into a single row to show more Todo rows.
+- Fixed weekly report prompts to pass the exact completed-task count so the AI does not miscount long task lists.

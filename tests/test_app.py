@@ -370,6 +370,8 @@ def test_weekly_report_uses_completed_and_planned_tasks(tmp_path, monkeypatch):
     assert "本周周报" in response.json()["report"]
     assert "本周完成项" in captured["prompt"]
     assert "下周高优先级待办" in captured["prompt"]
+    assert "本周已完成任务数：1" in captured["prompt"]
+    assert "本周完成数量必须使用上方“本周已完成任务数”的数值" in captured["prompt"]
 
 
 def test_weekly_plan_uses_stable_project_grouped_prompt(tmp_path, monkeypatch):

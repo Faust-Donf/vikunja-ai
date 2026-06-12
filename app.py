@@ -848,7 +848,8 @@ async def weekly_report() -> WeeklyReportResponse:
 本周范围：{start_s} 至 {end_s}
 下周范围：{next_start_s} 至 {next_end_s}
 
-本周已完成任务：
+本周已完成任务数：{len(completed)}
+本周已完成任务明细：
 {row_lines(completed, "本周没有记录到已归档完成任务。")}
 
 下周待办候选：
@@ -858,8 +859,9 @@ async def weekly_report() -> WeeklyReportResponse:
 1. 标题用“本周周报（{start_s} - {end_s}）”
 2. 分为：本周完成、本周重点与价值、风险/阻塞、下周 Todo、优先级建议
 3. 下周 Todo 要按重要性和紧急性排序，说明哪些是重要且紧急、重要不紧急
-4. 不要编造任务表里没有的信息；如果完成项少，要明确说数据不足
-5. 语气像个人工作复盘，简洁、可直接发送
+4. 本周完成数量必须使用上方“本周已完成任务数”的数值，不要自行重新计数或估算
+5. 不要编造任务表里没有的信息；如果完成项少，要明确说数据不足
+6. 语气像个人工作复盘，简洁、可直接发送
 """
     messages = [
         {
